@@ -1,0 +1,931 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="dark">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Project Game Design System Preview</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,600;9..144,700&family=IBM+Plex+Mono:wght@500;600&family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap"
+      rel="stylesheet"
+    />
+    <style>
+      :root {
+        --bg: #0b0e13;
+        --bg-2: #171c23;
+        --panel: rgba(23, 28, 35, 0.84);
+        --panel-solid: #1d2530;
+        --panel-soft: rgba(40, 49, 61, 0.74);
+        --line: rgba(199, 164, 93, 0.18);
+        --line-strong: rgba(199, 164, 93, 0.42);
+        --text: #f5eedf;
+        --muted: #b8aa90;
+        --accent: #c7a45d;
+        --accent-2: #5f8198;
+        --success: #6f8e77;
+        --warning: #d39a4a;
+        --danger: #c65a55;
+        --info: #5f8ba8;
+        --shadow-xl: 0 28px 90px rgba(0, 0, 0, 0.35);
+        --shadow-lg: 0 18px 44px rgba(0, 0, 0, 0.24);
+        --radius-sm: 6px;
+        --radius-md: 12px;
+        --radius-lg: 18px;
+        --radius-pill: 999px;
+        --font-display: "Fraunces", serif;
+        --font-body: "Plus Jakarta Sans", sans-serif;
+        --font-mono: "IBM Plex Mono", monospace;
+        --hero-glow: radial-gradient(circle at top left, rgba(199, 164, 93, 0.18), transparent 34%);
+        --desk-grid:
+          linear-gradient(rgba(199, 164, 93, 0.06) 1px, transparent 1px),
+          linear-gradient(90deg, rgba(199, 164, 93, 0.06) 1px, transparent 1px);
+      }
+
+      html[data-theme="light"] {
+        --bg: #f5eedf;
+        --bg-2: #efe5d2;
+        --panel: rgba(255, 251, 244, 0.84);
+        --panel-solid: #fffaf2;
+        --panel-soft: rgba(227, 215, 192, 0.82);
+        --line: rgba(23, 28, 35, 0.1);
+        --line-strong: rgba(96, 75, 36, 0.34);
+        --text: #1b2027;
+        --muted: #625947;
+        --accent: #aa8540;
+        --accent-2: #44677c;
+        --success: #5d7764;
+        --warning: #b57b2a;
+        --danger: #a44540;
+        --info: #47708a;
+        --shadow-xl: 0 28px 80px rgba(48, 35, 15, 0.12);
+        --shadow-lg: 0 16px 34px rgba(48, 35, 15, 0.08);
+        --hero-glow: radial-gradient(circle at top left, rgba(170, 133, 64, 0.15), transparent 36%);
+      }
+
+      * { box-sizing: border-box; }
+      html, body { margin: 0; min-height: 100%; }
+      body {
+        font-family: var(--font-body);
+        color: var(--text);
+        background: var(--hero-glow), linear-gradient(180deg, var(--bg) 0%, var(--bg-2) 100%);
+      }
+      a { color: inherit; }
+      button { font: inherit; }
+
+      .page {
+        width: min(1440px, calc(100vw - 32px));
+        margin: 0 auto;
+        padding: 28px 0 64px;
+      }
+
+      .topbar, .hero, .section-card, .mockup, .swatch, .specimen, .ui-demo, .frame-phone {
+        border: 1px solid var(--line);
+        background: var(--panel);
+        backdrop-filter: blur(14px);
+        box-shadow: var(--shadow-lg);
+      }
+
+      .topbar {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 16px;
+        padding: 14px 18px;
+        border-radius: var(--radius-lg);
+      }
+
+      .brand-lockup { display: flex; align-items: center; gap: 14px; }
+      .brand-mark {
+        width: 42px;
+        height: 42px;
+        border-radius: 50%;
+        border: 1px solid var(--line-strong);
+        background:
+          radial-gradient(circle at 35% 35%, rgba(245, 238, 223, 0.18), transparent 40%),
+          linear-gradient(135deg, rgba(199, 164, 93, 0.28), rgba(95, 129, 152, 0.18));
+        display: grid;
+        place-items: center;
+        font-family: var(--font-display);
+        font-weight: 700;
+      }
+
+      .brand-title {
+        margin: 0;
+        font-size: 0.76rem;
+        letter-spacing: 0.24em;
+        text-transform: uppercase;
+        color: var(--muted);
+      }
+
+      .brand-name {
+        margin: 4px 0 0;
+        font-family: var(--font-display);
+        font-size: 1.3rem;
+      }
+
+      .toggle {
+        border: 1px solid var(--line);
+        border-radius: var(--radius-pill);
+        background: var(--panel-soft);
+        color: var(--text);
+        padding: 10px 14px;
+        cursor: pointer;
+      }
+
+      .hero {
+        margin-top: 20px;
+        border-radius: 30px;
+        overflow: hidden;
+      }
+
+      .hero-grid {
+        display: grid;
+        grid-template-columns: 1.4fr 1fr;
+        gap: 24px;
+        padding: 34px;
+      }
+
+      .eyebrow {
+        margin: 0 0 12px;
+        font-size: 0.72rem;
+        font-weight: 700;
+        letter-spacing: 0.22em;
+        text-transform: uppercase;
+        color: var(--accent);
+      }
+
+      .hero h1, .section-title, .specimen h3, .mockup h3 { margin: 0; font-family: var(--font-display); }
+      .hero h1 {
+        font-size: clamp(2.8rem, 6vw, 5rem);
+        line-height: 0.93;
+        max-width: 11ch;
+      }
+
+      .hero p {
+        margin: 16px 0 0;
+        max-width: 60ch;
+        color: var(--muted);
+        line-height: 1.65;
+      }
+
+      .chip-row { display: flex; flex-wrap: wrap; gap: 10px; margin-top: 18px; }
+      .chip {
+        border-radius: var(--radius-pill);
+        padding: 10px 14px;
+        background: rgba(199, 164, 93, 0.1);
+        color: var(--text);
+        border: 1px solid rgba(199, 164, 93, 0.24);
+        font-size: 0.9rem;
+      }
+
+      .hero-panel { display: grid; gap: 14px; }
+      .bullet-panel, .score-panel {
+        padding: 20px;
+        border-radius: var(--radius-lg);
+        background: linear-gradient(180deg, rgba(255,255,255,0.02), rgba(255,255,255,0));
+        border: 1px solid var(--line);
+      }
+      .bullet-panel ul, .score-panel ul { margin: 0; padding: 0; list-style: none; }
+      .bullet-panel li, .score-panel li { margin-top: 10px; color: var(--muted); }
+
+      .section { margin-top: 28px; }
+      .section-card { padding: 24px; border-radius: 26px; }
+      .section-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: end;
+        gap: 16px;
+        margin-bottom: 18px;
+      }
+      .section-title { font-size: 2rem; }
+      .section-copy {
+        margin: 8px 0 0;
+        max-width: 60ch;
+        line-height: 1.6;
+        color: var(--muted);
+      }
+
+      .specimen-grid, .palette-grid, .demo-grid, .mockup-grid { display: grid; gap: 16px; }
+      .specimen-grid { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+      .palette-grid { grid-template-columns: repeat(4, minmax(0, 1fr)); }
+      .demo-grid { grid-template-columns: 1.2fr 1fr; }
+      .mockup-grid { grid-template-columns: 1fr; }
+
+      .specimen, .swatch, .ui-demo, .mockup { border-radius: var(--radius-lg); padding: 18px; }
+      .specimen h3, .swatch h3, .ui-demo h3, .mockup h3 { font-size: 1.2rem; }
+      .specimen .sample { margin-top: 16px; }
+      .sample-display { font-family: var(--font-display); font-size: 2.8rem; line-height: 0.96; }
+      .sample-body { font-size: 1rem; line-height: 1.65; }
+      .sample-ui {
+        font-size: 0.88rem;
+        font-weight: 700;
+        letter-spacing: 0.12em;
+        text-transform: uppercase;
+      }
+      .sample-mono { font-family: var(--font-mono); font-size: 0.88rem; }
+      .swatch-color {
+        height: 90px;
+        border-radius: 12px;
+        margin-bottom: 12px;
+        border: 1px solid rgba(255,255,255,0.1);
+      }
+      .swatch p, .mockup p, .ui-demo p, .specimen p { color: var(--muted); }
+
+      .button-row { display: flex; flex-wrap: wrap; gap: 10px; margin-top: 14px; }
+      .btn {
+        border: 1px solid transparent;
+        border-radius: var(--radius-pill);
+        padding: 11px 16px;
+      }
+      .btn-primary { background: var(--accent); color: #171c23; }
+      .btn-secondary {
+        background: rgba(95, 129, 152, 0.14);
+        color: var(--text);
+        border-color: rgba(95, 129, 152, 0.35);
+      }
+      .btn-ghost {
+        background: transparent;
+        color: var(--text);
+        border-color: var(--line);
+      }
+
+      .status-row { display: flex; flex-wrap: wrap; gap: 10px; margin-top: 14px; }
+      .status-pill {
+        font-size: 0.84rem;
+        padding: 8px 12px;
+        border-radius: var(--radius-pill);
+        border: 1px solid var(--line);
+      }
+
+      .success { color: var(--success); }
+      .warning { color: var(--warning); }
+      .danger { color: var(--danger); }
+      .info { color: var(--info); }
+
+      .mockup-frame {
+        margin-top: 18px;
+        border-radius: 18px;
+        border: 1px solid var(--line);
+        overflow: hidden;
+        background:
+          linear-gradient(180deg, rgba(255,255,255,0.02), rgba(255,255,255,0)),
+          var(--desk-grid);
+        background-size: auto, 28px 28px, 28px 28px;
+      }
+
+      .mockup-top {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 12px;
+        padding: 14px 16px;
+        border-bottom: 1px solid var(--line);
+        background: rgba(11, 14, 19, 0.24);
+      }
+
+      html[data-theme="light"] .mockup-top {
+        background: rgba(255, 248, 238, 0.66);
+      }
+
+      .mockup-meta { display: flex; gap: 10px; flex-wrap: wrap; }
+      .meta-pill {
+        border-radius: var(--radius-pill);
+        padding: 8px 12px;
+        background: var(--panel-soft);
+        border: 1px solid var(--line);
+        font-size: 0.84rem;
+      }
+
+      .session-shell {
+        display: grid;
+        grid-template-columns: 220px 1fr 320px;
+        min-height: 540px;
+      }
+
+      .rail, .side-panel, .battle, .hq-nav, .hq-right, .hq-main {
+        padding: 18px;
+      }
+
+      .rail {
+        border-right: 1px solid var(--line);
+        background: rgba(255,255,255,0.02);
+      }
+
+      .side-panel {
+        border-left: 1px solid var(--line);
+        background: rgba(255,255,255,0.02);
+      }
+
+      .battle {
+        display: flex;
+        flex-direction: column;
+      }
+
+      .rail h4, .side-panel h4, .battle h4, .hq-panel h4, .phone-screen h4 {
+        margin: 0 0 12px;
+        font-size: 0.82rem;
+        text-transform: uppercase;
+        letter-spacing: 0.18em;
+        color: var(--accent);
+      }
+
+      .timeline-item, .approval-card, .mini-card, .quest-card {
+        margin-top: 12px;
+        padding: 12px;
+        border-radius: 12px;
+        background: rgba(255,255,255,0.03);
+        border: 1px solid var(--line);
+      }
+
+      .board-head {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        gap: 12px;
+      }
+
+      .board {
+        margin-top: 16px;
+        border-radius: 18px;
+        border: 1px solid var(--line);
+        background: linear-gradient(180deg, rgba(10,13,18,0.84), rgba(23,29,38,0.84));
+        display: grid;
+        grid-template-columns: repeat(10, minmax(0, 1fr));
+        grid-template-rows: repeat(8, 52px);
+        gap: 6px;
+        padding: 10px;
+        position: relative;
+      }
+
+      html[data-theme="light"] .board {
+        background: linear-gradient(180deg, rgba(234, 228, 216, 0.88), rgba(246, 241, 233, 0.92));
+      }
+
+      .cell {
+        border: 1px solid rgba(255,255,255,0.06);
+        border-radius: 10px;
+      }
+
+      html[data-theme="light"] .cell {
+        border-color: rgba(27, 32, 39, 0.07);
+      }
+
+      .token {
+        position: absolute;
+        width: calc((100% - 54px) / 10);
+        height: calc((100% - 48px) / 8);
+        border-radius: 12px;
+        display: grid;
+        place-items: center;
+        font-size: 0.72rem;
+        font-weight: 700;
+        color: white;
+        box-shadow: 0 8px 20px rgba(0,0,0,0.3);
+      }
+
+      .token-player { background: linear-gradient(135deg, #5f8198, #7ba1ba); }
+      .token-active {
+        background: linear-gradient(135deg, #9a6b27, #d6b36c);
+        color: #191e25;
+      }
+      .token-enemy { background: linear-gradient(135deg, #8b4a46, #c65a55); }
+
+      .combat-drawer {
+        margin-top: 16px;
+        border: 1px solid var(--line);
+        border-radius: 14px;
+        padding: 12px;
+        background: rgba(255,255,255,0.03);
+        display: grid;
+        grid-template-columns: 1.2fr 1fr 1fr;
+        gap: 12px;
+      }
+
+      .hq-shell {
+        display: grid;
+        grid-template-columns: 180px 1fr 300px;
+        min-height: 480px;
+      }
+
+      .hq-nav {
+        border-right: 1px solid var(--line);
+      }
+
+      .hq-right {
+        border-left: 1px solid var(--line);
+      }
+
+      .hq-main {
+        display: grid;
+        grid-template-columns: 1.2fr 1fr;
+        gap: 14px;
+      }
+
+      .nav-item {
+        margin-top: 10px;
+        padding: 10px 12px;
+        border-radius: 10px;
+        border: 1px solid transparent;
+        color: var(--muted);
+      }
+
+      .nav-item.active {
+        color: var(--text);
+        border-color: var(--line);
+        background: rgba(199,164,93,0.08);
+      }
+
+      .frame-phone {
+        max-width: 360px;
+        margin: 0 auto;
+        padding: 10px;
+        border-radius: 30px;
+        background: linear-gradient(180deg, rgba(17,20,27,0.96), rgba(37,44,53,0.92));
+      }
+
+      html[data-theme="light"] .frame-phone {
+        background: linear-gradient(180deg, rgba(246, 241, 233, 0.96), rgba(228, 220, 202, 0.94));
+      }
+
+      .phone-screen {
+        border-radius: 22px;
+        padding: 18px;
+        background: var(--panel-solid);
+        min-height: 620px;
+        border: 1px solid var(--line);
+      }
+
+      .phone-actions {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 10px;
+        margin-top: 14px;
+      }
+
+      .footer-note {
+        margin-top: 18px;
+        color: var(--muted);
+        line-height: 1.6;
+      }
+
+      @media (max-width: 1100px) {
+        .hero-grid, .specimen-grid, .palette-grid, .demo-grid {
+          grid-template-columns: 1fr;
+        }
+        .session-shell, .hq-shell, .hq-main, .combat-drawer {
+          grid-template-columns: 1fr;
+        }
+        .rail, .side-panel, .hq-nav, .hq-right {
+          border: 0;
+          border-bottom: 1px solid var(--line);
+        }
+      }
+
+      @media (max-width: 720px) {
+        .page {
+          width: min(100vw - 20px, 1440px);
+          padding-top: 18px;
+        }
+        .hero-grid, .section-card {
+          padding: 20px;
+        }
+        .hero h1 {
+          font-size: 2.6rem;
+        }
+        .board {
+          grid-template-rows: repeat(8, 40px);
+          gap: 4px;
+        }
+        .token {
+          font-size: 0.62rem;
+        }
+      }
+    </style>
+  </head>
+  <body>
+    <div class="page">
+      <header class="topbar">
+        <div class="brand-lockup">
+          <div class="brand-mark">PG</div>
+          <div>
+            <p class="brand-title">Design System Preview</p>
+            <p class="brand-name">Project Game, Candlelit War Desk</p>
+          </div>
+        </div>
+        <button class="toggle" id="theme-toggle" type="button">Toggle light / dark</button>
+      </header>
+
+      <section class="hero">
+        <div class="hero-grid">
+          <div>
+            <p class="eyebrow">AI-native VTT and campaign operating system</p>
+            <h1>Run the table like a command post, not a dashboard.</h1>
+            <p>
+              This direction treats the live session as the center of gravity. The battlemap owns the room.
+              Transcript, approvals, recap, and world pressure sit in disciplined rails around it. The result
+              feels dependable under pressure, atmospheric without costume-drama chrome, and distinct from every
+              generic frosted-glass productivity clone.
+            </p>
+            <div class="chip-row">
+              <div class="chip">Map-first live session</div>
+              <div class="chip">Approval-aware AI rail</div>
+              <div class="chip">Campaign HQ between sessions</div>
+              <div class="chip">Companion-grade mobile</div>
+            </div>
+          </div>
+
+          <div class="hero-panel">
+            <div class="bullet-panel">
+              <p class="eyebrow">Safe choices</p>
+              <ul>
+                <li>Familiar VTT map center with clear combat strip</li>
+                <li>Productivity-style side rails for AI and transcript work</li>
+                <li>Status-forward degraded-mode language and diagnostics</li>
+              </ul>
+            </div>
+            <div class="score-panel">
+              <p class="eyebrow">Signature risks</p>
+              <ul>
+                <li>Literary serif headlines instead of fantasy logo fonts</li>
+                <li>Warm brass and slate instead of purple gradients</li>
+                <li>Transcript elevated into a first-class live rail</li>
+              </ul>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <section class="section">
+        <div class="section-card">
+          <div class="section-header">
+            <div>
+              <p class="eyebrow">Mockup 1</p>
+              <h2 class="section-title">Live Session, DM cockpit</h2>
+              <p class="section-copy">
+                Transcript on the left. Map in the center. Copilot and approvals on the right. The bottom drawer handles combat detail without stealing the room.
+              </p>
+            </div>
+          </div>
+
+          <article class="mockup">
+            <h3>Desktop live table</h3>
+            <div class="mockup-frame">
+              <div class="mockup-top">
+                <strong>Broken Gatehouse</strong>
+                <div class="mockup-meta">
+                  <span class="meta-pill">World Day 12</span>
+                  <span class="meta-pill">Live sync</span>
+                  <span class="meta-pill">2 approvals</span>
+                  <span class="meta-pill">Transcript degraded</span>
+                </div>
+              </div>
+
+              <div class="session-shell">
+                <aside class="rail">
+                  <h4>Transcript rail</h4>
+                  <div class="timeline-item">
+                    <strong>DM</strong>
+                    <p>The enemy standard dips as the rain lashes harder across the shattered parapet.</p>
+                  </div>
+                  <div class="timeline-item">
+                    <strong>Mira</strong>
+                    <p>I push up the broken stair and mark the captain for Thorn.</p>
+                  </div>
+                  <div class="timeline-item">
+                    <strong>Recap</strong>
+                    <p>The ridge lanterns answered. The gatehouse is holding. Barely.</p>
+                  </div>
+                </aside>
+
+                <main class="battle">
+                  <div class="board-head">
+                    <div>
+                      <h4>Battle slate</h4>
+                      <p style="margin:0;color:var(--muted);">Map commands stay quiet until needed.</p>
+                    </div>
+                    <div class="button-row" style="margin:0;">
+                      <button class="btn btn-secondary">Start combat</button>
+                      <button class="btn btn-primary">Next turn</button>
+                    </div>
+                  </div>
+
+                  <div class="board">
+                    <div class="cell"></div><div class="cell"></div><div class="cell"></div><div class="cell"></div><div class="cell"></div><div class="cell"></div><div class="cell"></div><div class="cell"></div><div class="cell"></div><div class="cell"></div>
+                    <div class="cell"></div><div class="cell"></div><div class="cell"></div><div class="cell"></div><div class="cell"></div><div class="cell"></div><div class="cell"></div><div class="cell"></div><div class="cell"></div><div class="cell"></div>
+                    <div class="cell"></div><div class="cell"></div><div class="cell"></div><div class="cell"></div><div class="cell"></div><div class="cell"></div><div class="cell"></div><div class="cell"></div><div class="cell"></div><div class="cell"></div>
+                    <div class="cell"></div><div class="cell"></div><div class="cell"></div><div class="cell"></div><div class="cell"></div><div class="cell"></div><div class="cell"></div><div class="cell"></div><div class="cell"></div><div class="cell"></div>
+                    <div class="cell"></div><div class="cell"></div><div class="cell"></div><div class="cell"></div><div class="cell"></div><div class="cell"></div><div class="cell"></div><div class="cell"></div><div class="cell"></div><div class="cell"></div>
+                    <div class="cell"></div><div class="cell"></div><div class="cell"></div><div class="cell"></div><div class="cell"></div><div class="cell"></div><div class="cell"></div><div class="cell"></div><div class="cell"></div><div class="cell"></div>
+                    <div class="cell"></div><div class="cell"></div><div class="cell"></div><div class="cell"></div><div class="cell"></div><div class="cell"></div><div class="cell"></div><div class="cell"></div><div class="cell"></div><div class="cell"></div>
+                    <div class="cell"></div><div class="cell"></div><div class="cell"></div><div class="cell"></div><div class="cell"></div><div class="cell"></div><div class="cell"></div><div class="cell"></div><div class="cell"></div><div class="cell"></div>
+                    <div class="token token-player" style="left:20%;top:48%;">Mira</div>
+                    <div class="token token-active" style="left:31%;top:48%;">Thorn</div>
+                    <div class="token token-enemy" style="left:67%;top:36%;">Goblin</div>
+                  </div>
+
+                  <div class="combat-drawer">
+                    <div class="mini-card">
+                      <strong>Initiative</strong>
+                      <p>Mira 17, Thorn 14, Goblin Captain 12, Skirmisher 9</p>
+                    </div>
+                    <div class="mini-card">
+                      <strong>Current turn</strong>
+                      <p>Thorn, line of sight to two targets, Bless active</p>
+                    </div>
+                    <div class="mini-card">
+                      <strong>Quick action</strong>
+                      <p>Roll d20, apply damage, mark concentration, reveal fog</p>
+                    </div>
+                  </div>
+                </main>
+
+                <aside class="side-panel">
+                  <h4>Copilot rail</h4>
+                  <div class="approval-card">
+                    <strong>Approval needed</strong>
+                    <p>Promote Lantern Watch into a named faction after this scene.</p>
+                  </div>
+                  <div class="approval-card">
+                    <strong>Memory fact</strong>
+                    <p class="sample-mono">Lantern Rebels → secured → north parapet</p>
+                  </div>
+                  <div class="approval-card">
+                    <strong>Voice</strong>
+                    <p>Transport live, transcript degraded, retry queue active.</p>
+                  </div>
+                  <div class="approval-card">
+                    <strong>Suggestion</strong>
+                    <p>Offer a collapsing stair hazard if the party pushes the captain backward.</p>
+                  </div>
+                </aside>
+              </div>
+            </div>
+          </article>
+        </div>
+      </section>
+
+      <section class="section">
+        <div class="section-card">
+          <div class="section-header">
+            <div>
+              <p class="eyebrow">Mockup 2</p>
+              <h2 class="section-title">Campaign HQ, living-world control room</h2>
+              <p class="section-copy">
+                The between-session game gets its own home. That keeps the table clean and makes the always-on campaign loop feel real.
+              </p>
+            </div>
+          </div>
+
+          <article class="mockup">
+            <h3>Desktop campaign HQ</h3>
+            <div class="mockup-frame">
+              <div class="mockup-top">
+                <strong>Campaign HQ</strong>
+                <div class="mockup-meta">
+                  <span class="meta-pill">3 active fronts</span>
+                  <span class="meta-pill">7 inbox items</span>
+                  <span class="meta-pill">World tick due</span>
+                </div>
+              </div>
+
+              <div class="hq-shell">
+                <aside class="hq-nav">
+                  <h4>Sections</h4>
+                  <div class="nav-item active">Inbox</div>
+                  <div class="nav-item">Fronts</div>
+                  <div class="nav-item">NPC graph</div>
+                  <div class="nav-item">Clue board</div>
+                  <div class="nav-item">Recaps</div>
+                  <div class="nav-item">Prep</div>
+                </aside>
+
+                <main class="hq-main">
+                  <section class="hq-panel">
+                    <h4>Inbox</h4>
+                    <div class="quest-card">
+                      <strong>Ridge Signal Changed</strong>
+                      <p>The rebels shifted to two-fire patterns after the party secured the gatehouse.</p>
+                    </div>
+                    <div class="quest-card">
+                      <strong>Absent Player Catch-up</strong>
+                      <p>Generate a playable summary for Elric before next session.</p>
+                    </div>
+                    <div class="quest-card">
+                      <strong>Patron Message</strong>
+                      <p>The Archivist demands the captain be taken alive if encountered again.</p>
+                    </div>
+                  </section>
+
+                  <section class="hq-panel">
+                    <h4>Unresolved threads</h4>
+                    <div class="mini-card">
+                      <strong>Who funds Lantern Watch?</strong>
+                      <p>No answer yet. Three transcript mentions. High future value.</p>
+                    </div>
+                    <div class="mini-card">
+                      <strong>What is under the gatehouse?</strong>
+                      <p>Clue count 2. Add a cold-open option next session.</p>
+                    </div>
+                  </section>
+                </main>
+
+                <aside class="hq-right">
+                  <h4>World pressure</h4>
+                  <div class="mini-card">
+                    <strong>Ashen Empire</strong>
+                    <p class="sample-mono">Pressure 58 → 64</p>
+                  </div>
+                  <div class="mini-card">
+                    <strong>Siege at Candlekeep</strong>
+                    <p class="sample-mono">Clock 2 / 6</p>
+                  </div>
+                  <div class="mini-card">
+                    <strong>Cold open</strong>
+                    <p>Begin with smoke over the outer parapet and one missing sentry.</p>
+                  </div>
+                </aside>
+              </div>
+            </div>
+          </article>
+        </div>
+      </section>
+
+      <section class="section">
+        <div class="section-card">
+          <div class="section-header">
+            <div>
+              <p class="eyebrow">Typography</p>
+              <h2 class="section-title">Fraunces, Plus Jakarta Sans, IBM Plex Mono</h2>
+              <p class="section-copy">
+                The system needs one atmospheric note, one dense workhorse, and one exact instrument.
+                That is the whole stack.
+              </p>
+            </div>
+          </div>
+
+          <div class="specimen-grid">
+            <article class="specimen">
+              <h3>Display</h3>
+              <p>Campaign titles, scene heads, world-state moments.</p>
+              <div class="sample sample-display">The Candlekeep Breach</div>
+            </article>
+            <article class="specimen">
+              <h3>Body</h3>
+              <p>Rails, forms, journals, handouts, and utility copy.</p>
+              <div class="sample sample-body">
+                The rebel signal fires gutter out one by one. If the gate falls before dawn, the party loses the north wall.
+              </div>
+            </article>
+            <article class="specimen">
+              <h3>UI + Data</h3>
+              <p>Controls stay crisp. Mechanics stay exact.</p>
+              <div class="sample sample-ui">Advance world tick</div>
+              <div class="sample sample-mono">INIT 17 • HP -08 • 21:14 UTC • X:06 Y:04</div>
+            </article>
+          </div>
+        </div>
+      </section>
+
+      <section class="section">
+        <div class="section-card">
+          <div class="section-header">
+            <div>
+              <p class="eyebrow">Color</p>
+              <h2 class="section-title">Brass intent, slate structure, vellum relief</h2>
+              <p class="section-copy">
+                Brass is for intent. Blue is for machine assistance and informational structure. The neutrals do most of the work.
+              </p>
+            </div>
+          </div>
+
+          <div class="palette-grid">
+            <article class="swatch">
+              <div class="swatch-color" style="background:#C7A45D;"></div>
+              <h3>Brass</h3>
+              <p>#C7A45D, primary action, turn emphasis, focus strokes</p>
+            </article>
+            <article class="swatch">
+              <div class="swatch-color" style="background:#5F8198;"></div>
+              <h3>Storm Blue</h3>
+              <p>#5F8198, AI rails, informational state, transcript energy</p>
+            </article>
+            <article class="swatch">
+              <div class="swatch-color" style="background:#171C23;"></div>
+              <h3>Inkstone</h3>
+              <p>#171C23, structural surface, rails, side panels</p>
+            </article>
+            <article class="swatch">
+              <div class="swatch-color" style="background:#F5EEDF;"></div>
+              <h3>Vellum</h3>
+              <p>#F5EEDF, light-mode field, contrast relief, document surfaces</p>
+            </article>
+          </div>
+
+          <div class="demo-grid" style="margin-top:18px;">
+            <article class="ui-demo">
+              <h3>Controls</h3>
+              <p>Buttons stay functional. No gradients, no toy-store bubble chrome.</p>
+              <div class="button-row">
+                <button class="btn btn-primary">Advance world tick</button>
+                <button class="btn btn-secondary">Refresh copilot</button>
+                <button class="btn btn-ghost">Open transcript</button>
+              </div>
+              <div class="status-row">
+                <div class="status-pill success">Voice healthy</div>
+                <div class="status-pill warning">Transcript degraded</div>
+                <div class="status-pill info">2 approvals pending</div>
+                <div class="status-pill danger">Reconnect needed</div>
+              </div>
+            </article>
+
+            <article class="ui-demo">
+              <h3>Surfaces</h3>
+              <p>Large surfaces feel like slate and vellum, not anonymous frosted cards.</p>
+              <div style="margin-top:12px;padding:12px;border-radius:12px;background:rgba(255,255,255,0.03);border:1px solid var(--line);">
+                <strong>Approval Card</strong>
+                <p>The AI wants to promote "Lantern Watch" from rumor to faction. DM approval required.</p>
+              </div>
+              <div style="margin-top:12px;padding:12px;border-radius:12px;background:rgba(255,255,255,0.03);border:1px solid var(--line);">
+                <strong>Recap Card</strong>
+                <p>The party secured the gatehouse, but the empire now knows the rebels hold the ridge.</p>
+              </div>
+            </article>
+          </div>
+        </div>
+      </section>
+
+      <section class="section">
+        <div class="section-card">
+          <div class="section-header">
+            <div>
+              <p class="eyebrow">Mockup 3</p>
+              <h2 class="section-title">Player Companion, phone-first utility</h2>
+              <p class="section-copy">
+                This is a sharp little field device, not a squeezed-down desktop app.
+              </p>
+            </div>
+          </div>
+
+          <article class="mockup">
+            <h3>Mobile companion</h3>
+            <div class="frame-phone">
+              <div class="phone-screen">
+                <p class="eyebrow">Mira Vale</p>
+                <h3 style="font-size:1.8rem;margin:0;">Frontline companion</h3>
+                <p style="margin-top:10px;">See what matters, roll fast, stay caught up.</p>
+
+                <div class="mini-card">
+                  <h4>Current scene</h4>
+                  <strong>Broken Gatehouse</strong>
+                  <p>Round 2. Thorn is up. The stair is unstable.</p>
+                </div>
+
+                <div class="phone-actions">
+                  <button class="btn btn-primary">Roll d20</button>
+                  <button class="btn btn-secondary">Open sheet</button>
+                </div>
+
+                <div class="mini-card">
+                  <h4>Recap</h4>
+                  <p>The party holds the gatehouse. The ridge answered with rebel lanterns. Two canon changes need DM review.</p>
+                </div>
+
+                <div class="mini-card">
+                  <h4>Quick facts</h4>
+                  <p class="sample-mono">HP 42 / 47</p>
+                  <p class="sample-mono">AC 18</p>
+                  <p class="sample-mono">Objective: hold the north stair</p>
+                </div>
+
+                <div class="mini-card">
+                  <h4>Transcript catch-up</h4>
+                  <p>DM: "The enemy standard dips as the rain lashes harder across the parapet."</p>
+                </div>
+              </div>
+            </div>
+          </article>
+
+          <p class="footer-note">
+            Preview artifact for the design system. If this direction is the one, the next step is to translate these shells into app routes and component rules, not to freestyle new visuals screen by screen.
+          </p>
+        </div>
+      </section>
+    </div>
+
+    <script>
+      const root = document.documentElement;
+      const storedTheme = localStorage.getItem("project-game-preview-theme");
+
+      if (storedTheme) {
+        root.setAttribute("data-theme", storedTheme);
+      }
+
+      document.getElementById("theme-toggle").addEventListener("click", () => {
+        const next = root.getAttribute("data-theme") === "dark" ? "light" : "dark";
+        root.setAttribute("data-theme", next);
+        localStorage.setItem("project-game-preview-theme", next);
+      });
+    </script>
+  </body>
+</html>
