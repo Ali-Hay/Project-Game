@@ -1,0 +1,67 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <link rel="stylesheet" href="style.css">
+  <link href="https://fonts.googleapis.com/css2?family=Crimson+Pro:ital,wght@0,300;0,400;0,600;1,300;1,400&family=JetBrains+Mono:wght@300;400&display=swap" rel="stylesheet">
+</head>
+<body>
+  <div id="gameContainer">
+    <canvas id="gameCanvas" width="2560" height="1440"></canvas>
+    <div id="ui-layer">
+      <div id="top-bar">
+        <div id="location-name">The Threshold</div>
+        <div id="session-info">Chronicle: Zero</div>
+      </div>
+      <div id="prose-panel">
+        <div id="prose-scroll"></div>
+        <div id="typing-indicator"><span class="dot"></span><span class="dot"></span><span class="dot"></span></div>
+      </div>
+      <div id="choices-panel"></div>
+      <div id="character-sheet" class="collapsed">
+        <div id="cs-toggle" onclick="game.toggleCharSheet()">⟁</div>
+        <div id="cs-content">
+          <div class="cs-name">Kael Ashborne</div>
+          <div class="cs-class">Human — Paladin 3</div>
+          <div id="cs-stats"></div>
+          <div id="cs-hp-bar"><div id="cs-hp-fill"></div><span id="cs-hp-text"></span></div>
+          <div id="cs-inventory"></div>
+          <div id="cs-conditions"></div>
+        </div>
+      </div>
+      <div id="combat-sidebar" class="hidden">
+        <div id="turn-tracker">ROUND 1</div>
+        <div id="combat-log"></div>
+        <div id="combat-actions"></div>
+      </div>
+      <div id="dice-result" class="hidden">
+        <div id="dice-value"></div>
+        <div id="dice-detail"></div>
+      </div>
+      <div id="world-ticker" class="hidden">
+        <div id="ticker-text"></div>
+      </div>
+      <div id="audio-indicator">
+        <div id="audio-icon" onclick="game.audio.toggleMute()">♪</div>
+        <div id="audio-mood"></div>
+      </div>
+    </div>
+  </div>
+  <script src="GameObject.js"></script>
+  <script src="AudioEngine.js"></script>
+  <script src="LogicGate.js"></script>
+  <script src="Weaver.js"></script>
+  <script src="ShadowSim.js"></script>
+  <script src="CombatManager.js"></script>
+  <script src="MapRenderer.js"></script>
+  <script src="ParticleSystem.js"></script>
+  <script src="Menu.js" defer></script>
+  <script src="Game.js"></script>
+  <script>
+    const game = new Game(document.getElementById('gameCanvas'));
+    window.game = game;
+    game.start();
+  </script>
+</body>
+</html>

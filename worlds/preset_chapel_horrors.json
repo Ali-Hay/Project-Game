@@ -1,0 +1,447 @@
+{
+  "meta": {
+    "id": "chapel_horrors_v1",
+    "name": "The Chapel Horrors",
+    "setting": "Dark Fantasy, Undead, Sacred",
+    "difficulty": 2,
+    "estimatedPlaytime": 20,
+    "description": "A ruined chapel draws you into darkness. A ghostly priest pleads for salvation, while the restless dead stir below."
+  },
+  
+  "player": {
+    "class": "Paladin",
+    "level": 3,
+    "hp": 28,
+    "maxHp": 28,
+    "ac": 18,
+    "stats": {
+      "STR": 16,
+      "DEX": 10,
+      "CON": 14,
+      "INT": 10,
+      "WIS": 13,
+      "CHA": 16
+    },
+    "proficiency": 2,
+    "inventory": [
+      { "name": "Longsword", "type": "weapon", "damage": "1d8", "modifier": "STR", "properties": ["versatile"] },
+      { "name": "Shield", "type": "armor", "acBonus": 2 },
+      { "name": "Chain Mail", "type": "armor", "baseAc": 16 },
+      { "name": "Holy Symbol", "type": "focus" },
+      { "name": "Torch", "type": "light", "quantity": 3 },
+      { "name": "Potion of Healing", "type": "consumable", "effect": "2d4+2", "quantity": 2 }
+    ],
+    "spellSlots": { "1": 3, "max1": 3 },
+    "conditions": []
+  },
+  
+  "locations": {
+    "chapel_entrance": {
+      "name": "The Shattered Chapel",
+      "mood": "dread",
+      "description": "A ruined stone chapel on a hillside. The spire lists at a dangerous angle.",
+      "connections": ["chapel_nave", "forest_path"],
+      "objects": [
+        { "id": "chapel_door", "type": "door", "state": "closed", "locked": false, "dc": null },
+        { "id": "iron_gate", "type": "door", "state": "locked", "locked": true, "dc": 15 }
+      ],
+      "npcs": [],
+      "enemies": [],
+      "flags": {
+        "visited": false,
+        "torchesLit": false
+      },
+      "prose": {
+        "atmosphere": "Dread, abandonment, ancient malice",
+        "first": [
+          {
+            "text": "The chapel rises from the hillside like a broken tooth against the bruised sky. Its spire, once proud, now lists at an angle that speaks of violence — not weather, but something deliberate. Something <emotion type=\"dread\">angry</emotion>.",
+            "tags": {
+              "emotions": ["dread"],
+              "pauses": 300
+            }
+          },
+          {
+            "text": "Dusk has painted everything the color of old blood. The oak doors hang ajar, and from within comes a smell you know too well — cold stone, old incense, and beneath it all, the sweet-rot perfume of the <emotion type=\"wrongness\">restless dead</emotion>.",
+            "tags": {
+              "emotions": ["wrongness"],
+              "pauses": 400
+            }
+          }
+        ],
+        "return": [
+          {
+            "text": "The chapel waits, unchanged. Patient as a predator.",
+            "tags": {
+              "emotions": ["dread"],
+              "pauses": 200
+            }
+          }
+        ]
+      }
+    },
+    
+    "chapel_nave": {
+      "name": "The Nave",
+      "mood": "sacred",
+      "description": "The main chamber of the chapel. Pews lie scattered. An defiled altar dominates the far end.",
+      "connections": ["chapel_entrance", "chapel_crypt"],
+      "objects": [
+        { "id": "altar", "type": "interactable", "state": "defiled", "investigated": false },
+        { "id": "crypt_stairs", "type": "passage", "state": "hidden", "dc": 14 }
+      ],
+      "npcs": ["ghost_priest"],
+      "enemies": [],
+      "flags": {
+        "visited": false,
+        "altarCleansed": false
+      },
+      "prose": {
+        "atmosphere": "Sacred corruption, divine transgression, lingering souls",
+        "first": [
+          {
+            "text": "The nave opens before you like a wound. Pews lie scattered — overturned, splintered — as though a congregation fled in terror and the furniture tried to follow. <sfx trigger=\"stone_scrape\">Moonlight slices through gaps in the vaulted ceiling, casting silver bars across the flagstones.</sfx>",
+            "tags": {
+              "sfx": ["stone_scrape"],
+              "emotions": ["sorrow"],
+              "pauses": 400
+            }
+          },
+          {
+            "text": "At the far end, the <emotion type=\"dread\">altar</emotion> draws your eye. It has been defiled. Dark stains trace sigils you do not recognize across its marble surface, and the holy symbols that once adorned the wall behind it have been inverted. Each one. <emotion type=\"wrongness\">Deliberately.</emotion>",
+            "tags": {
+              "emotions": ["dread", "wrongness"],
+              "pauses": 500
+            }
+          }
+        ]
+      }
+    },
+    
+    "chapel_crypt": {
+      "name": "The Crypt Below",
+      "mood": "combat",
+      "description": "Stone sarcophagi line the walls. Two stand open. Skeletal guardians bar the way.",
+      "connections": ["chapel_nave"],
+      "objects": [
+        { "id": "sarcophagus", "type": "interactable", "state": "sealed", "dc": 16 }
+      ],
+      "npcs": [],
+      "enemies": ["skeleton_warrior", "skeleton_warrior"],
+      "flags": {
+        "visited": false,
+        "bossDefeated": false
+      },
+      "prose": {
+        "atmosphere": "Death, combat, undying rage",
+        "first": [
+          {
+            "text": "The stairs descend into a darkness that your torch assaults but cannot conquer. <sfx trigger=\"stone_step\">Each step is slick with moisture, and the air grows thick with the mineral tang of deep earth.</sfx>",
+            "tags": {
+              "sfx": ["stone_step"],
+              "emotions": ["dread"],
+              "pauses": 400
+            }
+          },
+          {
+            "text": "The crypt reveals itself in grudging increments. Stone sarcophagi line the walls, their lids adorned with the carved likenesses of the faithful departed. All serene. All at peace.",
+            "tags": {
+              "emotions": ["sorrow"],
+              "pauses": 300
+            }
+          },
+          {
+            "text": "<emotion type=\"terror\">Except for the two that stand open.</emotion> And the two figures that stand between you and the sealed sarcophagus at the far wall. Rusted blades. Empty eye sockets that somehow still <emotion type=\"wrongness\">see</emotion>. <emotion type=\"resolve\">This ends here.</emotion>",
+            "tags": {
+              "emotions": ["terror", "wrongness", "resolve"],
+              "pauses": 500
+            }
+          }
+        ]
+      }
+    },
+    
+    "forest_path": {
+      "name": "The Ashen Path",
+      "mood": "mystery",
+      "description": "A winding path through ash-grey trees. Smoke rises in the distance.",
+      "connections": ["chapel_entrance", "village_ruins"],
+      "objects": [],
+      "npcs": [],
+      "enemies": [],
+      "flags": {
+        "visited": false
+      },
+      "prose": {
+        "atmosphere": "Mystery, desolation, hidden danger",
+        "first": [
+          {
+            "text": "The path winds through ash-grey trees, their branches bare despite the season. The ground crunches beneath your boots — not with leaves, but with something finer. <emotion type=\"dread\">Ash. You're walking through the memory of a fire.</emotion>",
+            "tags": {
+              "emotions": ["dread"],
+              "pauses": 400
+            }
+          }
+        ]
+      }
+    },
+    
+    "village_ruins": {
+      "name": "Ruins of Ember Hollow",
+      "mood": "sorrow",
+      "description": "Charred timbers and collapsed stone. A survivor crouches near an old well.",
+      "connections": ["forest_path"],
+      "objects": [],
+      "npcs": ["survivor_mira"],
+      "enemies": [],
+      "flags": {
+        "visited": false
+      },
+      "prose": {
+        "atmosphere": "Loss, survival, desperate hope",
+        "first": [
+          {
+            "text": "Ember Hollow. The name seems cruelly literal now. What remains of the village is a geometry of charred timbers and collapsed stone. Foundation lines trace the ghosts of homes, a marketplace, what might have been a school.",
+            "tags": {
+              "emotions": ["sorrow"],
+              "pauses": 400
+            }
+          },
+          {
+            "text": "<emotion type=\"hope\">Movement catches your eye.</emotion> Near what was once a well, a figure crouches. Small. Wrapped in a scorched blanket. Human. Alive.",
+            "tags": {
+              "emotions": ["hope"],
+              "pauses": 300
+            }
+          }
+        ]
+      }
+    }
+  },
+  
+  "npcs": {
+    "ghost_priest": {
+      "name": "Father Aldric",
+      "status": "spectral",
+      "role": "quest-giver",
+      "disposition": 50,
+      "dispositionThresholds": {
+        "veryHostile": -80,
+        "hostile": -40,
+        "neutral": 0,
+        "friendly": 40,
+        "veryFriendly": 80
+      },
+      "leitmotif": "sacred",
+      "ac": 12,
+      "hp": 22,
+      "maxHp": 22,
+      "flags": {
+        "spoken": false,
+        "questGiven": false,
+        "appeased": false
+      },
+      "prose": {
+        "first_meeting": [
+          {
+            "text": "The whisper resolves into shape. A figure stands near the broken altar, translucent as morning frost. An old man — a priest, judging by the vestments that ripple in a wind you cannot feel. His face carries the weight of a grief <emotion type=\"sorrow\">beyond death.</emotion>",
+            "tags": {
+              "emotions": ["sorrow"],
+              "pauses": 400
+            }
+          },
+          {
+            "text": "<npc id=\"ghost_priest\"><span class=\"highlight\">\"You should not be here, child of the living.\"</span> His voice arrives not through your ears but somewhere behind your eyes. <span class=\"highlight\">\"But since you are... perhaps the Maker has not abandoned this place after all.\"</span></npc>",
+            "tags": {
+              "npcs": ["ghost_priest"],
+              "emotions": ["hope"],
+              "pauses": 500
+            }
+          }
+        ],
+        "dialogue_hostile": [
+          {
+            "text": "His spectral form shimmers with anger. <span class=\"highlight\">\"You intrude.\"</span> The air grows colder. <emotion type=\"wrongness\">Much colder.</emotion>",
+            "tags": {
+              "emotions": ["wrongness"],
+              "pauses": 300
+            }
+          }
+        ],
+        "dialogue_neutral": [
+          {
+            "text": "He regards you with weary eyes. <span class=\"highlight\">\"State your purpose, Paladin.\"</span>",
+            "tags": {
+              "emotions": ["contemplation"],
+              "pauses": 200
+            }
+          }
+        ],
+        "dialogue_friendly": [
+          {
+            "text": "His form seems to glow faintly. <span class=\"highlight\">\"Perhaps... you can help. The horde grows. The altar still cries out for purification.\"</span> <emotion type=\"hope\">For the first time, hope flickers in his eyes.</emotion>",
+            "tags": {
+              "emotions": ["hope"],
+              "pauses": 400
+            }
+          }
+        ],
+        "dialogue_veryfriendly": [
+          {
+            "text": "<npc id=\"ghost_priest\"><span class=\"highlight\">\"You have my trust, child of light.\"</span></npc> He gestures toward the hidden stairs. <span class=\"highlight\">\"Below lies the source of this corruption. End it, and I can finally rest.\"</span>",
+            "tags": {
+              "npcs": ["ghost_priest"],
+              "emotions": ["determination"],
+              "pauses": 400
+            }
+          }
+        ]
+      },
+      "audio": {
+        "leitmotif": "sacred",
+        "leitmotifFreq": 330
+      }
+    },
+    
+    "survivor_mira": {
+      "name": "Mira",
+      "status": "alive",
+      "role": "ally",
+      "disposition": 30,
+      "dispositionThresholds": {
+        "veryHostile": -80,
+        "hostile": -40,
+        "neutral": 0,
+        "friendly": 40,
+        "veryFriendly": 80
+      },
+      "leitmotif": "sorrow",
+      "ac": 10,
+      "hp": 10,
+      "maxHp": 10,
+      "flags": {
+        "spoken": false,
+        "trusted": false
+      },
+      "prose": {
+        "first_meeting": [
+          {
+            "text": "She looks up with eyes that have seen too much fire. Young — barely twenty, if that — but her gaze belongs to someone much older. The blanket slips, revealing <emotion type=\"sorrow\">burns along her forearm and a makeshift bandage dark with old blood.</emotion>",
+            "tags": {
+              "emotions": ["sorrow"],
+              "pauses": 400
+            }
+          },
+          {
+            "text": "<npc id=\"survivor_mira\"><span class=\"highlight\">\"Don't.\"</span></npc> The word is flat. Not a plea. A warning. Her hand moves beneath the blanket, and you hear the scrape of metal. <span class=\"highlight\">\"I've already lost everything worth losing. Don't test what that makes me willing to do.\"</span>",
+            "tags": {
+              "npcs": ["survivor_mira"],
+              "emotions": ["defiance"],
+              "pauses": 500
+            }
+          }
+        ],
+        "dialogue_hostile": [
+          {
+            "text": "Her eyes narrow. <span class=\"highlight\">\"Another knight to leave me behind.\"</span> <emotion type=\"bitterness\">She turns away.</emotion>",
+            "tags": {
+              "emotions": ["bitterness"],
+              "pauses": 300
+            }
+          }
+        ],
+        "dialogue_neutral": [
+          {
+            "text": "She studies you carefully. <span class=\"highlight\">\"What do you want?\"</span>",
+            "tags": {
+              "emotions": ["caution"],
+              "pauses": 200
+            }
+          }
+        ],
+        "dialogue_friendly": [
+          {
+            "text": "A flicker of trust crosses her face. <span class=\"highlight\">\"Maybe... maybe you're different.\"</span> She sits down slowly. <emotion type=\"vulnerability\">\"The horde took everyone. I'm all that's left.\"</emotion>",
+            "tags": {
+              "emotions": ["vulnerability"],
+              "pauses": 400
+            }
+          }
+        ]
+      },
+      "audio": {
+        "leitmotif": "sorrow",
+        "leitmotifFreq": 165
+      }
+    }
+  },
+  
+  "enemies": {
+    "skeleton_warrior": {
+      "name": "Risen Guardian",
+      "ac": 13,
+      "hp": 13,
+      "maxHp": 13,
+      "attack": {
+        "bonus": 4,
+        "damage": "1d6+2"
+      },
+      "leitmotif": "combat",
+      "prose": {
+        "first_encounter": [
+          {
+            "text": "<emotion type=\"terror\">Rusted blades.</emotion> <emotion type=\"wrongness\">Empty eye sockets that somehow still see.</emotion>",
+            "tags": {
+              "emotions": ["terror", "wrongness"],
+              "pauses": 300
+            }
+          }
+        ],
+        "defeated": [
+          {
+            "text": "The creature collapses. Not like a person falls — all at once, like <sfx trigger=\"bone_crunch\">a puppet whose strings are cut simultaneously</sfx>. Bones clatter against stone. The dim light in its sockets gutters and dies, and what remains is just... remains.",
+            "tags": {
+              "sfx": ["bone_crunch"],
+              "emotions": ["triumph"],
+              "pauses": 400
+            }
+          }
+        ]
+      }
+    }
+  },
+  
+  "factions": {
+    "undead_horde": {
+      "name": "Undead Horde",
+      "power": 60,
+      "goal": "Expand beyond the crypt",
+      "territory": ["chapel_crypt"],
+      "rules": {
+        "powerGainPerTurn": 2,
+        "powerLossPerTurn": 0,
+        "alertThreshold": 70,
+        "escalationStates": ["dormant", "aware", "aggressive", "siege"]
+      }
+    },
+    "survivors": {
+      "name": "Survivors of Ember Hollow",
+      "power": 20,
+      "goal": "Survive and rebuild",
+      "territory": ["village_ruins"],
+      "rules": {
+        "powerGainPerTurn": 0,
+        "powerLossPerTurn": 1,
+        "alertThreshold": 0,
+        "escalationStates": ["thriving", "struggling", "desperate", "extinct"]
+      }
+    }
+  },
+  
+  "globalFlags": {
+    "chapelPurified": false,
+    "hordeAlerted": false,
+    "miraAlly": false,
+    "ghostAppeared": false
+  }
+}
