@@ -55,10 +55,15 @@ export class RoomStore {
   dispatchCommand(roomId: string, input: unknown): { state: SessionRoomState; events: LedgerEvent[] } {
     const room = this.getRoom(roomId);
     const command = commandSchema.parse(input) as SessionCommand;
+
+    if (command.type === "token.move" && !room.tokens[command.tokenId]) {
+      throw new Error(`Unknown token: ${command.tokenId}`);
+    }
+
     const result = applySessionCommand(room, command);
 
     if (result.events.length > 0) {
-      this.appendEvents(roomId, result.events);
+      this.appendEvents(roomId, result.events, result.state);
     } else {
       this.rooms.set(roomId, result.state);
     }
@@ -69,8 +74,8 @@ export class RoomStore {
     };
   }
 
-  appendEvents(roomId: string, events: LedgerEvent[]): SessionRoomState {
-    let state = this.getRoom(roomId);
+  appendEvents(roomId: string, events: LedgerEvent[], baseState?: SessionRoomState): SessionRoomState {
+    let state = baseState ?? this.getRoom(roomId);
     const ledger = this.getLedger(roomId);
 
     for (const event of events) {

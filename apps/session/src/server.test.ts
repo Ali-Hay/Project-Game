@@ -57,4 +57,68 @@ describe("session server", () => {
     expect(payload.state.memoryFacts.length).toBeGreaterThan(0);
     expect(payload.context.recap).toContain("Dungeon Master");
   });
+
+  it("rejects unknown tokens instead of polluting ledger-derived memory", async () => {
+    const server = await buildServer();
+    servers.push(server);
+
+    const response = await server.app.inject({
+      method: "POST",
+      url: "/rooms/room_demo/commands",
+      payload: {
+        commandId: "cmd_invalid_token",
+        type: "token.move",
+        tokenId: "token_missing",
+        x: 99,
+        y: 99
+      }
+    });
+
+    expect(response.statusCode).toBe(400);
+
+    const stateResponse = await server.app.inject({
+      method: "GET",
+      url: "/rooms/room_demo/state"
+    });
+
+    const payload = stateResponse.json();
+    expect(payload.state.memoryFacts).toHaveLength(0);
+    expect(payload.state.lastRecap).not.toContain("token_missing");
+  });
+
+  it("deduplicates repeated command ids at the service layer", async () => {
+    const server = await buildServer();
+    servers.push(server);
+
+    const payload = {
+      commandId: "cmd_duplicate",
+      type: "token.move",
+      tokenId: "token_fighter",
+      x: 6,
+      y: 5
+    };
+
+    await server.app.inject({
+      method: "POST",
+      url: "/rooms/room_demo/commands",
+      payload
+    });
+
+    await server.app.inject({
+      method: "POST",
+      url: "/rooms/room_demo/commands",
+      payload
+    });
+
+    await new Promise((resolve) => setTimeout(resolve, 25));
+
+    const stateResponse = await server.app.inject({
+      method: "GET",
+      url: "/rooms/room_demo/state"
+    });
+
+    const state = stateResponse.json().state;
+    expect(state.processedCommandIds).toContain("cmd_duplicate");
+    expect(state.memoryFacts).toHaveLength(1);
+  });
 });

@@ -27,8 +27,8 @@ export class VoiceProvider {
         provider: "livekit",
         roomName: `project-game-${campaignId}`,
         token: `configure-token-issuer-for-${actorId}`,
-        status: "ready",
-        note: "Voice transport is configured. Replace the placeholder token issuer with a signed access token endpoint."
+        status: "needs-config",
+        note: "LiveKit transport settings are present, but signed access token issuance is not implemented in this scaffold yet."
       };
     }
 

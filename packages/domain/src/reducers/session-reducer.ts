@@ -292,6 +292,7 @@ export function applySessionCommand(
       events.push(buildLedgerEvent(state.campaign, "room.join", { actorId: command.actorId, role: command.role }));
       break;
     case "token.move":
+      if (!state.tokens[command.tokenId]) break;
       events.push(buildLedgerEvent(state.campaign, "token.move", { tokenId: command.tokenId, x: command.x, y: command.y }));
       break;
     case "dice.roll": {

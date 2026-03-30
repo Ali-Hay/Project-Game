@@ -6,12 +6,18 @@ export interface OutboxJob {
 }
 
 type Handler = (job: OutboxJob) => Promise<void>;
+type ErrorHandler = (error: unknown, job: OutboxJob) => void;
 
 export class OutboxService {
   private readonly queue: OutboxJob[] = [];
   private draining = false;
 
-  constructor(private readonly handler: Handler) {}
+  constructor(
+    private readonly handler: Handler,
+    private readonly onError: ErrorHandler = (error, job) => {
+      console.error(`Outbox job failed for room ${job.roomId}`, error);
+    }
+  ) {}
 
   enqueue(job: OutboxJob) {
     this.queue.push(job);
@@ -22,12 +28,19 @@ export class OutboxService {
     if (this.draining) return;
     this.draining = true;
 
-    while (this.queue.length > 0) {
-      const next = this.queue.shift();
-      if (!next) continue;
-      await this.handler(next);
-    }
+    try {
+      while (this.queue.length > 0) {
+        const next = this.queue.shift();
+        if (!next) continue;
 
-    this.draining = false;
+        try {
+          await this.handler(next);
+        } catch (error) {
+          this.onError(error, next);
+        }
+      }
+    } finally {
+      this.draining = false;
+    }
   }
 }
