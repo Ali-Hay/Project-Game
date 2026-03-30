@@ -1,0 +1,27 @@
+{
+  "name": "project-game",
+  "private": true,
+  "version": "0.1.0",
+  "packageManager": "pnpm@10.0.0",
+  "scripts": {
+    "dev": "concurrently \"corepack pnpm dev:session\" \"corepack pnpm dev:web\"",
+    "dev:session": "corepack pnpm --filter @project-game/session dev",
+    "dev:web": "corepack pnpm --filter @project-game/web dev",
+    "build": "corepack pnpm --filter @project-game/domain build && corepack pnpm --filter @project-game/session build && corepack pnpm --filter @project-game/web build",
+    "typecheck": "corepack pnpm --recursive typecheck",
+    "test": "vitest run --config vitest.config.ts",
+    "test:e2e": "playwright test"
+  },
+  "pnpm": {
+    "onlyBuiltDependencies": ["esbuild", "sharp"]
+  },
+  "devDependencies": {
+    "@playwright/test": "^1.52.0",
+    "@types/node": "^24.0.0",
+    "concurrently": "^9.1.2",
+    "tsup": "^8.3.5",
+    "tsx": "^4.19.3",
+    "typescript": "^5.8.3",
+    "vitest": "^3.0.9"
+  }
+}

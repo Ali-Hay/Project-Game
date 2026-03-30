@@ -1,0 +1,18 @@
+FROM node:22-alpine AS base
+RUN corepack enable
+WORKDIR /app
+
+COPY package.json pnpm-workspace.yaml tsconfig.base.json ./
+COPY apps/web/package.json apps/web/package.json
+COPY packages/domain/package.json packages/domain/package.json
+
+RUN pnpm install --frozen-lockfile
+
+COPY apps/web apps/web
+COPY packages/domain packages/domain
+
+RUN pnpm --filter @project-game/domain build
+RUN pnpm --filter @project-game/web build
+
+EXPOSE 3000
+CMD ["pnpm", "--filter", "@project-game/web", "start"]
