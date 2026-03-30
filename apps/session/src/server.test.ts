@@ -11,6 +11,15 @@ afterEach(async () => {
       await current.app.close();
     }
   }
+
+  delete process.env.DATABASE_URL;
+  delete process.env.REDIS_URL;
+  delete process.env.VOICE_PROVIDER;
+  delete process.env.LIVEKIT_API_KEY;
+  delete process.env.LIVEKIT_API_SECRET;
+  delete process.env.LIVEKIT_WS_URL;
+  delete process.env.AI_PROVIDER;
+  delete process.env.OPENAI_API_KEY;
 });
 
 describe("session server", () => {
@@ -120,5 +129,64 @@ describe("session server", () => {
     const state = stateResponse.json().state;
     expect(state.processedCommandIds).toContain("cmd_duplicate");
     expect(state.memoryFacts).toHaveLength(1);
+  });
+
+  it("reports scaffold runtime capabilities in health output", async () => {
+    const server = await buildServer();
+    servers.push(server);
+
+    const response = await server.app.inject({
+      method: "GET",
+      url: "/health"
+    });
+
+    expect(response.statusCode).toBe(200);
+    const payload = response.json();
+    expect(payload.runtime.storage.mode).toBe("in-memory");
+    expect(payload.runtime.storage.durable).toBe(false);
+    expect(payload.runtime.queue.mode).toBe("in-process");
+    expect(payload.runtime.ai.mode).toBe("mock");
+    expect(payload.runtime.voice.mode).toBe("mock");
+    expect(payload.runtime.warnings).toEqual([]);
+  });
+
+  it("surfaces configured-but-unimplemented runtime integrations in health output", async () => {
+    process.env.DATABASE_URL = "postgres://project_game:project_game@localhost:5432/project_game";
+    process.env.REDIS_URL = "redis://localhost:6379";
+    process.env.VOICE_PROVIDER = "livekit";
+    process.env.LIVEKIT_API_KEY = "key";
+    process.env.LIVEKIT_API_SECRET = "secret";
+    process.env.LIVEKIT_WS_URL = "wss://example.livekit.test";
+    process.env.AI_PROVIDER = "openai";
+    process.env.OPENAI_API_KEY = "test-key";
+
+    const server = await buildServer();
+    servers.push(server);
+
+    const response = await server.app.inject({
+      method: "GET",
+      url: "/health"
+    });
+
+    expect(response.statusCode).toBe(200);
+    const payload = response.json();
+    expect(payload.runtime.storage.mode).toBe("in-memory");
+    expect(payload.runtime.queue.mode).toBe("in-process");
+    expect(payload.runtime.voice.provider).toBe("livekit");
+    expect(payload.runtime.voice.mode).toBe("needs-config");
+    expect(payload.runtime.ai.provider).toBe("openai");
+    expect(payload.runtime.ai.mode).toBe("needs-config");
+    expect(payload.runtime.warnings).toContain(
+      "DATABASE_URL is configured, but the session service still boots the in-memory RoomStore."
+    );
+    expect(payload.runtime.warnings).toContain(
+      "REDIS_URL is configured, but the outbox still runs on an in-process queue."
+    );
+    expect(payload.runtime.warnings).toContain(
+      "LiveKit transport settings are present, but signed access token issuance is not implemented in this scaffold yet."
+    );
+    expect(payload.runtime.warnings).toContain(
+      "OpenAI was selected, but the scaffold still uses a deterministic local copilot response path."
+    );
   });
 });

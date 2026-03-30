@@ -8,27 +8,49 @@ export interface VoiceDescriptor {
   note: string;
 }
 
+export interface VoiceProviderStatus {
+  provider: string;
+  mode: "ready" | "mock" | "needs-config";
+  note: string;
+}
+
 export class VoiceProvider {
   constructor(private readonly config: SessionConfig) {}
 
-  issueDescriptor(campaignId: string, actorId: string): VoiceDescriptor {
+  getStatus(): VoiceProviderStatus {
     if (this.config.VOICE_PROVIDER === "livekit") {
       if (!this.config.LIVEKIT_API_KEY || !this.config.LIVEKIT_API_SECRET || !this.config.LIVEKIT_WS_URL) {
         return {
           provider: "livekit",
-          roomName: `project-game-${campaignId}`,
-          token: "",
-          status: "needs-config",
+          mode: "needs-config",
           note: "LiveKit is selected but credentials are missing. Falling back to degraded voice UX."
         };
       }
 
       return {
         provider: "livekit",
-        roomName: `project-game-${campaignId}`,
-        token: `configure-token-issuer-for-${actorId}`,
-        status: "needs-config",
+        mode: "needs-config",
         note: "LiveKit transport settings are present, but signed access token issuance is not implemented in this scaffold yet."
+      };
+    }
+
+    return {
+      provider: "mock",
+      mode: "mock",
+      note: "Using the mock voice provider. The UI can still exercise graceful degradation and status flows."
+    };
+  }
+
+  issueDescriptor(campaignId: string, actorId: string): VoiceDescriptor {
+    const status = this.getStatus();
+
+    if (status.provider === "livekit") {
+      return {
+        provider: "livekit",
+        roomName: `project-game-${campaignId}`,
+        token: status.mode === "ready" ? `livekit-token-for-${actorId}` : "",
+        status: status.mode,
+        note: status.note
       };
     }
 
@@ -36,8 +58,8 @@ export class VoiceProvider {
       provider: "mock",
       roomName: `project-game-${campaignId}`,
       token: `mock-${actorId}`,
-      status: "mock",
-      note: "Using the mock voice provider. The UI can still exercise graceful degradation and status flows."
+      status: status.mode,
+      note: status.note
     };
   }
 }

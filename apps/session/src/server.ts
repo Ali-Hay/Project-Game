@@ -8,6 +8,7 @@ import { readConfig } from "./config";
 import { CopilotService } from "./services/copilot-service";
 import { MemoryService } from "./services/memory-service";
 import { OutboxService } from "./services/outbox-service";
+import { buildRuntimeCapabilities } from "./services/runtime-capabilities";
 import { VoiceProvider } from "./services/voice-provider";
 import { RoomStore } from "./state/room-store";
 import { WorldTickWorker } from "./workers/world-tick-worker";
@@ -36,6 +37,7 @@ export async function buildServer() {
   const copilotService = new CopilotService();
   const voiceProvider = new VoiceProvider(config);
   const worldTickWorker = new WorldTickWorker(roomStore);
+  const runtime = buildRuntimeCapabilities(config, voiceProvider.getStatus());
 
   const subscriptions = new Map<string, Set<SocketLike>>();
 
@@ -64,12 +66,13 @@ export async function buildServer() {
 
   app.get("/health", async () => ({
     status: "ok",
+    runtime,
     rooms: roomStore.listCampaigns().length,
-      diagnostics: roomStore.listCampaigns().map((campaign) => ({
-        id: campaign.campaign.id,
-        diagnostics: campaign.diagnostics
-      }))
-    }));
+    diagnostics: roomStore.listCampaigns().map((campaign) => ({
+      id: campaign.campaign.id,
+      diagnostics: campaign.diagnostics
+    }))
+  }));
 
   app.get("/campaigns", async () => roomStore.listCampaigns());
 
