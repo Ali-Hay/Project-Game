@@ -1,8 +1,9 @@
 import { z } from "zod";
 
 const envSchema = z.object({
+  PORT: z.coerce.number().optional(),
   SESSION_HOST: z.string().default("0.0.0.0"),
-  SESSION_PORT: z.coerce.number().default(4000),
+  SESSION_PORT: z.coerce.number().optional(),
   DATABASE_URL: z.string().optional(),
   REDIS_URL: z.string().optional(),
   VOICE_PROVIDER: z.enum(["mock", "livekit"]).default("mock"),
@@ -13,8 +14,16 @@ const envSchema = z.object({
   OPENAI_API_KEY: z.string().optional()
 });
 
-export type SessionConfig = z.infer<typeof envSchema>;
+type RawSessionConfig = z.infer<typeof envSchema>;
+export type SessionConfig = Omit<RawSessionConfig, "PORT" | "SESSION_PORT"> & {
+  SESSION_PORT: number;
+};
 
 export function readConfig(): SessionConfig {
-  return envSchema.parse(process.env);
+  const config = envSchema.parse(process.env);
+
+  return {
+    ...config,
+    SESSION_PORT: config.SESSION_PORT ?? config.PORT ?? 4000
+  };
 }
