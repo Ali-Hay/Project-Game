@@ -4,8 +4,8 @@
   "version": "0.1.0",
   "scripts": {
     "clean": "node ./scripts/clean-next.mjs",
-    "dev": "node ./scripts/clean-next.mjs && next dev",
-    "build": "node ./scripts/clean-next.mjs && next build",
+    "dev": "next dev",
+    "build": "next build",
     "start": "next start",
     "typecheck": "tsc --noEmit"
   },

@@ -27,6 +27,14 @@ const shellModes: Array<{ id: ShellMode; label: string; summary: string }> = [
   { id: "companion", label: "Player Companion", summary: "Phone-first recap, dice, and character snapshots." }
 ];
 
+const utcShortDateFormatter = new Intl.DateTimeFormat("en-US", {
+  month: "short",
+  day: "numeric",
+  hour: "numeric",
+  minute: "2-digit",
+  timeZone: "UTC"
+});
+
 function getShellHref(campaignId: string, mode: ShellMode) {
   switch (mode) {
     case "hq":
@@ -40,12 +48,7 @@ function getShellHref(campaignId: string, mode: ShellMode) {
 }
 
 function formatShortDate(value: string) {
-  return new Intl.DateTimeFormat(undefined, {
-    month: "short",
-    day: "numeric",
-    hour: "numeric",
-    minute: "2-digit"
-  }).format(new Date(value));
+  return `${utcShortDateFormatter.format(new Date(value))} UTC`;
 }
 
 function getHealthTone(status: ServiceHealth) {
@@ -357,7 +360,7 @@ export function CampaignShell({ campaignId, roomId, initialState, initialContext
                     <li className="transcript-line" key={turn.id}>
                       <div className="transcript-meta">
                         <strong>{turn.speaker}</strong>
-                        <span>{formatShortDate(turn.occurredAt)}</span>
+                        <time dateTime={turn.occurredAt}>{formatShortDate(turn.occurredAt)}</time>
                       </div>
                       <p>{turn.text}</p>
                     </li>
@@ -454,7 +457,7 @@ export function CampaignShell({ campaignId, roomId, initialState, initialContext
                     <article className="inbox-card" key={message.id}>
                       <div className="inbox-card-header">
                         <h4>{message.title}</h4>
-                        <span>{formatShortDate(message.createdAt)}</span>
+                        <time dateTime={message.createdAt}>{formatShortDate(message.createdAt)}</time>
                       </div>
                       <p>{message.body}</p>
                     </article>
@@ -529,7 +532,7 @@ export function CampaignShell({ campaignId, roomId, initialState, initialContext
                     <article className="approval-card" key={approval.id}>
                       <div className="approval-card-header">
                         <strong>{approval.title}</strong>
-                        <span>{formatShortDate(approval.requestedAt)}</span>
+                        <time dateTime={approval.requestedAt}>{formatShortDate(approval.requestedAt)}</time>
                       </div>
                       <p>{approval.detail}</p>
                     </article>
