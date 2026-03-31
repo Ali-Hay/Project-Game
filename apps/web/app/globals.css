@@ -1161,6 +1161,10 @@ p {
     width: min(calc(100vw - 20px), 1680px);
   }
 
+  .campaign-shell-live {
+    padding-bottom: 360px;
+  }
+
   .landing-hero,
   .campaign-header,
   .battle-slate,
@@ -1201,10 +1205,13 @@ p {
   }
 
   .transcript-rail {
-    position: sticky;
+    position: fixed;
+    left: 10px;
+    right: 10px;
     bottom: 12px;
     z-index: 20;
     max-height: min(46vh, 420px);
+    margin: 0;
     padding: 12px;
     overflow: auto;
     border-radius: 22px;
