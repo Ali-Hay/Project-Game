@@ -1,5 +1,7 @@
 # Project Game
 
+Building an AI-native D&D VTT experience.
+
 Project Game is an AI-native 5e-compatible virtual tabletop built around a staged architecture:
 
 - `apps/web` hosts the Next.js client shell, campaign surfaces, and copilot UI.
