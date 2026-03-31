@@ -19,8 +19,8 @@ type SocketLike = {
   on: (event: string, handler: (...args: any[]) => void) => void;
 };
 
-function safeSend(socket: SocketLike, payload: unknown) {
-  if (socket.readyState === 1) {
+function safeSend(socket: SocketLike | undefined, payload: unknown) {
+  if (socket && socket.readyState === 1) {
     socket.send(JSON.stringify(payload));
   }
 }
@@ -180,28 +180,28 @@ export async function buildServer() {
     return voiceProvider.issueDescriptor(campaignId, actorId);
   });
 
-  app.get("/rooms/:roomId/ws", { websocket: true }, (connection, request) => {
+  app.get("/rooms/:roomId/ws", { websocket: true }, (socket, request) => {
     const { roomId } = request.params as { roomId: string };
     const room = roomStore.getRoom(roomId);
     const roomSockets = subscriptions.get(roomId) ?? new Set<SocketLike>();
-    roomSockets.add(connection.socket);
+    roomSockets.add(socket);
     subscriptions.set(roomId, roomSockets);
 
-    safeSend(connection.socket, {
+    safeSend(socket, {
       type: "state.bootstrap",
       state: room,
       context: roomStore.getContext(room.campaign.id)
     });
 
-    connection.socket.on("message", (message: any) => {
-      safeSend(connection.socket, {
+    socket.on("message", (message: any) => {
+      safeSend(socket, {
         type: "ws.echo",
         received: message.toString()
       });
     });
 
-    connection.socket.on("close", () => {
-      roomSockets.delete(connection.socket);
+    socket.on("close", () => {
+      roomSockets.delete(socket);
     });
   });
 

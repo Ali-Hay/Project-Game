@@ -67,6 +67,37 @@ describe("session server", () => {
     expect(payload.context.recap).toContain("Dungeon Master");
   });
 
+  it("broadcasts transcript updates to websocket subscribers", async () => {
+    const server = await buildServer();
+    servers.push(server);
+
+    await server.app.ready();
+    const ws = await server.app.injectWS("/rooms/room_demo/ws");
+
+    const stateUpdated = new Promise<string>((resolve) => {
+      ws.on("message", (chunk: { toString(): string }) => {
+        const payload = JSON.parse(chunk.toString());
+        if (payload.type === "state.updated" && payload.state?.transcript?.length > 0) {
+          resolve(payload.state.transcript[payload.state.transcript.length - 1].text);
+        }
+      });
+    });
+
+    const transcriptResponse = await server.app.inject({
+      method: "POST",
+      url: "/campaigns/campaign_demo/transcript-turns",
+      payload: {
+        speaker: "Dungeon Master",
+        speakerRole: "gm",
+        text: "The parapet rattles as the defenders raise their shields."
+      }
+    });
+
+    expect(transcriptResponse.statusCode).toBe(200);
+    await expect(stateUpdated).resolves.toContain("The parapet rattles");
+    ws.terminate();
+  });
+
   it("rejects unknown tokens instead of polluting ledger-derived memory", async () => {
     const server = await buildServer();
     servers.push(server);

@@ -161,13 +161,21 @@ export function CopilotPanel({
         </div>
 
         <ul className="memory-fact-list">
-          {context.memoryFacts.map((fact) => (
-            <li className="memory-fact-row" key={fact.id}>
-              <strong>{fact.subject}</strong>
-              <span>{fact.predicate}</span>
-              <em>{fact.object}</em>
+          {context.memoryFacts.length > 0 ? (
+            context.memoryFacts.map((fact) => (
+              <li className="memory-fact-row" key={fact.id}>
+                <strong>{fact.subject}</strong>
+                <span>{fact.predicate}</span>
+                <em>{fact.object}</em>
+              </li>
+            ))
+          ) : (
+            <li className="memory-fact-row">
+              <strong>No structured facts yet</strong>
+              <span>memory queue</span>
+              <em>Add transcript or world events to anchor the campaign memory.</em>
             </li>
-          ))}
+          )}
         </ul>
       </div>
 

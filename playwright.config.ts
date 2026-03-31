@@ -11,12 +11,12 @@ export default defineConfig({
     {
       command: "corepack pnpm dev:session",
       port: 4000,
-      reuseExistingServer: !process.env.CI
+      reuseExistingServer: false
     },
     {
       command: "corepack pnpm dev:web",
       port: 3000,
-      reuseExistingServer: !process.env.CI
+      reuseExistingServer: false
     }
   ]
 });

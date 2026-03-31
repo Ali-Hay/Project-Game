@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import { useEffect, useMemo, useState, useTransition } from "react";
 
 import type { Actor, CopilotContextPack, ServiceHealth, SessionRoomState } from "@project-game/domain";
@@ -9,18 +10,34 @@ import { TabletopBoard } from "../tabletop/tabletop-board";
 import { getSessionApiBaseUrl, getSessionWebSocketUrl, type CopilotResponse, type VoiceDescriptor } from "../../lib/session-api";
 
 interface CampaignShellProps {
+  campaignId: string;
   roomId: string;
   initialState: SessionRoomState;
   initialContext: CopilotContextPack;
+  mode: ShellMode;
 }
 
 type ShellMode = "live" | "hq" | "companion";
+type CompanionSection = "sheet" | "dice" | "recap" | "quest";
+type LiveRailTab = "transcript" | "pressure";
 
 const shellModes: Array<{ id: ShellMode; label: string; summary: string }> = [
   { id: "live", label: "Live Session", summary: "Map, transcript rail, and copilot approvals." },
   { id: "hq", label: "Campaign HQ", summary: "Between-session fallout, fronts, and inbox pressure." },
   { id: "companion", label: "Player Companion", summary: "Phone-first recap, dice, and character snapshots." }
 ];
+
+function getShellHref(campaignId: string, mode: ShellMode) {
+  switch (mode) {
+    case "hq":
+      return `/campaigns/${campaignId}/hq`;
+    case "companion":
+      return `/campaigns/${campaignId}/companion`;
+    case "live":
+    default:
+      return `/campaigns/${campaignId}`;
+  }
+}
 
 function formatShortDate(value: string) {
   return new Intl.DateTimeFormat(undefined, {
@@ -58,12 +75,13 @@ function getCampaignObjective(actors: Actor[]) {
   return `${nextPlayer.name} is the current player anchor. Keep objective, recap, and rolls one tap away.`;
 }
 
-export function CampaignShell({ roomId, initialState, initialContext }: CampaignShellProps) {
+export function CampaignShell({ campaignId, roomId, initialState, initialContext, mode }: CampaignShellProps) {
   const [state, setState] = useState(initialState);
   const [context, setContext] = useState(initialContext);
   const [copilot, setCopilot] = useState<CopilotResponse | null>(null);
   const [voice, setVoice] = useState<VoiceDescriptor | null>(null);
-  const [mode, setMode] = useState<ShellMode>("live");
+  const [companionSection, setCompanionSection] = useState<CompanionSection>("sheet");
+  const [liveRailTab, setLiveRailTab] = useState<LiveRailTab>("transcript");
   const [isPending, startTransition] = useTransition();
 
   useEffect(() => {
@@ -105,6 +123,7 @@ export function CampaignShell({ roomId, initialState, initialContext }: Campaign
   );
 
   const transcriptTurns = useMemo(() => state.transcript.slice(-6).reverse(), [state.transcript]);
+  const catchUpTurns = useMemo(() => transcriptTurns.slice(0, 3), [transcriptTurns]);
 
   const activeFront = useMemo(
     () => [...state.fronts].sort((left, right) => right.progress - left.progress)[0] ?? null,
@@ -132,12 +151,16 @@ export function CampaignShell({ roomId, initialState, initialContext }: Campaign
     return response.json();
   };
 
-  const issueCommand = async (command: Record<string, unknown>) => {
-    const payload = await postJson<{ state: SessionRoomState; context?: CopilotContextPack }>(`/rooms/${roomId}/commands`, command);
+  const applyRoomMutation = (payload: { state: SessionRoomState; context?: CopilotContextPack }) => {
     setState(payload.state);
     if (payload.context) {
       setContext(payload.context);
     }
+  };
+
+  const issueCommand = async (command: Record<string, unknown>) => {
+    const payload = await postJson<{ state: SessionRoomState; context?: CopilotContextPack }>(`/rooms/${roomId}/commands`, command);
+    applyRoomMutation(payload);
   };
 
   const nudgeToken = (tokenId: string, dx: number, dy: number) => {
@@ -189,25 +212,25 @@ export function CampaignShell({ roomId, initialState, initialContext }: Campaign
 
   const injectTranscript = () => {
     startTransition(() => {
-      void postJson(`/campaigns/${state.campaign.id}/transcript-turns`, {
+      void postJson<{ state: SessionRoomState }>(`/campaigns/${state.campaign.id}/transcript-turns`, {
         speaker: "Dungeon Master",
         speakerRole: "gm",
         text: "The enemy standard dips as the rain lashes harder across the shattered parapet."
-      });
+      }).then(applyRoomMutation);
     });
   };
 
   const advanceWorldTick = () => {
     startTransition(() => {
-      void postJson(`/campaigns/${state.campaign.id}/world-tick`, {});
+      void postJson<{ state: SessionRoomState }>(`/campaigns/${state.campaign.id}/world-tick`, {}).then(applyRoomMutation);
     });
   };
 
   const toggleTranscriptHealth = () => {
     startTransition(() => {
-      void postJson(`/campaigns/${state.campaign.id}/diagnostics/transcript`, {
+      void postJson<{ state: SessionRoomState }>(`/campaigns/${state.campaign.id}/diagnostics/transcript`, {
         status: state.diagnostics.transcript === "healthy" ? "degraded" : "healthy"
-      });
+      }).then(applyRoomMutation);
     });
   };
 
@@ -224,7 +247,7 @@ export function CampaignShell({ roomId, initialState, initialContext }: Campaign
   };
 
   return (
-    <div className="campaign-shell desk-shell">
+    <div className={`campaign-shell desk-shell campaign-shell-${mode}`}>
       <header className="campaign-header">
         <div className="campaign-header-copy">
           <p className="eyebrow">Live Campaign Desk</p>
@@ -257,15 +280,15 @@ export function CampaignShell({ roomId, initialState, initialContext }: Campaign
 
       <nav className="mode-tabs" aria-label="Product shells">
         {shellModes.map((shellMode) => (
-          <button
+          <Link
             className={`mode-tab ${mode === shellMode.id ? "mode-tab-active" : ""}`}
+            href={getShellHref(campaignId, shellMode.id)}
             key={shellMode.id}
-            onClick={() => setMode(shellMode.id)}
-            type="button"
+            prefetch={false}
           >
             <span>{shellMode.label}</span>
             <small>{shellMode.summary}</small>
-          </button>
+          </Link>
         ))}
       </nav>
 
@@ -298,7 +321,26 @@ export function CampaignShell({ roomId, initialState, initialContext }: Campaign
       {mode === "live" ? (
         <section className="session-layout">
           <aside className="rail transcript-rail" aria-label="Transcript rail">
-            <div className="rail-section">
+            <div className="live-rail-tabs" aria-label="Transcript rail sections">
+              <button
+                aria-pressed={liveRailTab === "transcript"}
+                className={liveRailTab === "transcript" ? "live-rail-tab-active" : ""}
+                onClick={() => setLiveRailTab("transcript")}
+                type="button"
+              >
+                Transcript
+              </button>
+              <button
+                aria-pressed={liveRailTab === "pressure"}
+                className={liveRailTab === "pressure" ? "live-rail-tab-active" : ""}
+                onClick={() => setLiveRailTab("pressure")}
+                type="button"
+              >
+                Pressure
+              </button>
+            </div>
+
+            <div className={`rail-section live-rail-panel ${liveRailTab === "transcript" ? "live-rail-panel-active" : ""}`}>
               <div className="section-heading">
                 <div>
                   <p className="eyebrow">Transcript rail</p>
@@ -326,7 +368,7 @@ export function CampaignShell({ roomId, initialState, initialContext }: Campaign
               </ul>
             </div>
 
-            <div className="rail-section">
+            <div className={`rail-section live-rail-panel ${liveRailTab === "pressure" ? "live-rail-panel-active" : ""}`}>
               <div className="section-heading">
                 <div>
                   <p className="eyebrow">World pressure</p>
@@ -420,7 +462,10 @@ export function CampaignShell({ roomId, initialState, initialContext }: Campaign
                 ) : (
                   <article className="inbox-card inbox-card-empty">
                     <h4>No downtime fallout yet</h4>
-                    <p>Advance the world tick from the copilot rail to generate campaign consequences.</p>
+                    <p>Advance the world tick from Live Session to generate campaign consequences, then return here for fallout.</p>
+                    <Link className="secondary-button" href={getShellHref(campaignId, "live")} prefetch={false}>
+                      Open live session actions
+                    </Link>
                   </article>
                 )}
               </div>
@@ -511,54 +556,168 @@ export function CampaignShell({ roomId, initialState, initialContext }: Campaign
               </div>
 
               <div className="companion-nav">
-                <button className="companion-nav-active" type="button">
+                <button
+                  aria-pressed={companionSection === "sheet"}
+                  className={companionSection === "sheet" ? "companion-nav-active" : ""}
+                  onClick={() => setCompanionSection("sheet")}
+                  type="button"
+                >
                   Sheet
                 </button>
-                <button type="button">Dice</button>
-                <button type="button">Recap</button>
-                <button type="button">Quest</button>
+                <button
+                  aria-pressed={companionSection === "dice"}
+                  className={companionSection === "dice" ? "companion-nav-active" : ""}
+                  onClick={() => setCompanionSection("dice")}
+                  type="button"
+                >
+                  Dice
+                </button>
+                <button
+                  aria-pressed={companionSection === "recap"}
+                  className={companionSection === "recap" ? "companion-nav-active" : ""}
+                  onClick={() => setCompanionSection("recap")}
+                  type="button"
+                >
+                  Recap
+                </button>
+                <button
+                  aria-pressed={companionSection === "quest"}
+                  className={companionSection === "quest" ? "companion-nav-active" : ""}
+                  onClick={() => setCompanionSection("quest")}
+                  type="button"
+                >
+                  Quest
+                </button>
               </div>
 
-              <article className="companion-card">
-                <p className="eyebrow">Current objective</p>
-                <h3>Hold the parapet long enough to break the enemy advance.</h3>
-                <p>{getCampaignObjective(players)}</p>
-              </article>
+              {companionSection === "sheet" ? (
+                <>
+                  <article className="companion-card">
+                    <p className="eyebrow">Current objective</p>
+                    <h3>Hold the parapet long enough to break the enemy advance.</h3>
+                    <p>{getCampaignObjective(players)}</p>
+                  </article>
 
-              {players.map((player) => (
-                <article className="companion-card" key={player.id}>
-                  <div className="companion-card-header">
-                    <div>
-                      <p className="eyebrow">Character</p>
-                      <h3>{player.name}</h3>
-                    </div>
-                    <button onClick={() => rollCheck(player.id, `${player.name} companion check`)} type="button">
-                      Roll d20
-                    </button>
-                  </div>
-                  <dl className="companion-stats">
-                    <div>
-                      <dt>Class</dt>
-                      <dd>{player.sheet?.className ?? "Unlinked"}</dd>
-                    </div>
-                    <div>
-                      <dt>HP</dt>
-                      <dd>
-                        {player.sheet?.hitPoints.current ?? "--"} / {player.sheet?.hitPoints.max ?? "--"}
-                      </dd>
-                    </div>
-                    <div>
-                      <dt>AC</dt>
-                      <dd>{player.sheet?.armorClass ?? "--"}</dd>
-                    </div>
-                  </dl>
-                </article>
-              ))}
+                  {players.map((player) => (
+                    <article className="companion-card" key={player.id}>
+                      <div className="companion-card-header">
+                        <div>
+                          <p className="eyebrow">Character</p>
+                          <h3>{player.name}</h3>
+                        </div>
+                        <button onClick={() => rollCheck(player.id, `${player.name} companion check`)} type="button">
+                          Roll d20
+                        </button>
+                      </div>
+                      <dl className="companion-stats">
+                        <div>
+                          <dt>Class</dt>
+                          <dd>{player.sheet?.className ?? "Unlinked"}</dd>
+                        </div>
+                        <div>
+                          <dt>HP</dt>
+                          <dd>
+                            {player.sheet?.hitPoints.current ?? "--"} / {player.sheet?.hitPoints.max ?? "--"}
+                          </dd>
+                        </div>
+                        <div>
+                          <dt>AC</dt>
+                          <dd>{player.sheet?.armorClass ?? "--"}</dd>
+                        </div>
+                      </dl>
+                    </article>
+                  ))}
+                </>
+              ) : null}
 
-              <article className="companion-card">
-                <p className="eyebrow">Recap</p>
-                <p>{state.lastRecap}</p>
-              </article>
+              {companionSection === "dice" ? (
+                <>
+                  <article className="companion-card">
+                    <p className="eyebrow">Dice</p>
+                    <h3>Companion quick dice</h3>
+                    <p>Keep single-tap checks handy for players who joined on mobile mid-scene.</p>
+                  </article>
+
+                  {players.map((player) => (
+                    <article className="companion-card" key={`${player.id}-dice`}>
+                      <div className="companion-card-header">
+                        <div>
+                          <p className="eyebrow">Quick roll</p>
+                          <h3>{player.name}</h3>
+                        </div>
+                        <button onClick={() => rollCheck(player.id, `${player.name} mobile save`)} type="button">
+                          Roll save
+                        </button>
+                      </div>
+                      <p>{player.sheet?.className ?? "Adventurer"} can resolve a fast save without reopening the full desk.</p>
+                    </article>
+                  ))}
+                </>
+              ) : null}
+
+              {companionSection === "recap" ? (
+                <>
+                  <article className="companion-card">
+                    <p className="eyebrow">Recap</p>
+                    <h3>Latest recap</h3>
+                    <p>{state.lastRecap}</p>
+                  </article>
+
+                  <article className="companion-card">
+                    <p className="eyebrow">Catch-up</p>
+                    <h3>Late join summary</h3>
+                    {catchUpTurns.length > 0 ? (
+                      <div className="stack-list">
+                        {catchUpTurns.map((turn) => (
+                          <article className="companion-summary" key={turn.id}>
+                            <strong>{turn.speaker}</strong>
+                            <p>{turn.text}</p>
+                          </article>
+                        ))}
+                      </div>
+                    ) : (
+                      <p>No live turns yet. Join voice or inject a transcript turn to build the catch-up feed.</p>
+                    )}
+                  </article>
+                </>
+              ) : null}
+
+              {companionSection === "quest" ? (
+                <>
+                  <article className="companion-card">
+                    <p className="eyebrow">Quest</p>
+                    <h3>Open fronts and approvals</h3>
+                    <p>Surface only the pressure that players need on phone, not the full GM control deck.</p>
+                  </article>
+
+                  <article className="companion-card">
+                    <p className="eyebrow">Front pressure</p>
+                    <div className="front-list">
+                      {state.fronts.map((front) => (
+                        <article className="front-card" key={front.id}>
+                          <div className="front-card-header">
+                            <strong>{front.name}</strong>
+                            <span>{front.progress}</span>
+                          </div>
+                          <p>{front.stakes}</p>
+                          <div className="meter">
+                            <span style={{ width: `${Math.min(100, front.progress * 10)}%` }} />
+                          </div>
+                        </article>
+                      ))}
+                    </div>
+                  </article>
+
+                  <article className="companion-card">
+                    <p className="eyebrow">Approvals</p>
+                    <p>
+                      {pendingApprovals.length > 0
+                        ? `${pendingApprovals.length} canon changes are waiting on the DM.`
+                        : "No canon changes are blocked right now."}
+                    </p>
+                  </article>
+                </>
+              ) : null}
             </div>
           </div>
 
@@ -579,12 +738,19 @@ export function CampaignShell({ roomId, initialState, initialContext }: Campaign
                 </div>
               </div>
               <div className="stack-list">
-                {transcriptTurns.slice(0, 3).map((turn) => (
-                  <article className="companion-summary" key={turn.id}>
-                    <strong>{turn.speaker}</strong>
-                    <p>{turn.text}</p>
+                {catchUpTurns.length > 0 ? (
+                  catchUpTurns.map((turn) => (
+                    <article className="companion-summary" key={turn.id}>
+                      <strong>{turn.speaker}</strong>
+                      <p>{turn.text}</p>
+                    </article>
+                  ))
+                ) : (
+                  <article className="companion-summary">
+                    <strong>No live turns yet</strong>
+                    <p>Join voice or inject a transcript turn to build the catch-up feed.</p>
                   </article>
-                ))}
+                )}
               </div>
             </div>
           </aside>
@@ -593,3 +759,5 @@ export function CampaignShell({ roomId, initialState, initialContext }: Campaign
     </div>
   );
 }
+
+export type { ShellMode };
