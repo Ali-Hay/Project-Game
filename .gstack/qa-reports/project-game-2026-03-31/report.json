@@ -1,0 +1,44 @@
+{
+  "date": "2026-03-31",
+  "sessionUrl": "http://127.0.0.1:4100",
+  "webUrl": "http://127.0.0.1:3100",
+  "issues": [],
+  "checks": [
+    {
+      "name": "hq-shell-width",
+      "width": 1360
+    },
+    {
+      "name": "desktop-screenshots",
+      "files": [
+        "C:\\Users\\aliha\\Project Game\\.gstack\\qa-reports\\project-game-2026-03-31\\screenshots\\initial-live-desktop.png",
+        "C:\\Users\\aliha\\Project Game\\.gstack\\qa-reports\\project-game-2026-03-31\\screenshots\\hq-desktop.png",
+        "C:\\Users\\aliha\\Project Game\\.gstack\\qa-reports\\project-game-2026-03-31\\screenshots\\companion-desktop.png"
+      ]
+    },
+    {
+      "name": "mobile-live-layout",
+      "viewportHeight": 664,
+      "railBottomGap": 12,
+      "tabsVisible": true,
+      "mainTop": 1374.03125,
+      "copilotTop": 4882.59375,
+      "railTop": 346.5625
+    },
+    {
+      "name": "mobile-companion-layout",
+      "viewportHeight": 664,
+      "navBottomGap": 0,
+      "navHeight": 62
+    },
+    {
+      "name": "mobile-screenshots",
+      "files": [
+        "C:\\Users\\aliha\\Project Game\\.gstack\\qa-reports\\project-game-2026-03-31\\screenshots\\live-mobile.png",
+        "C:\\Users\\aliha\\Project Game\\.gstack\\qa-reports\\project-game-2026-03-31\\screenshots\\live-mobile-pressure.png",
+        "C:\\Users\\aliha\\Project Game\\.gstack\\qa-reports\\project-game-2026-03-31\\screenshots\\companion-mobile.png"
+      ]
+    }
+  ],
+  "consoleErrors": []
+}
