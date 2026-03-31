@@ -1,0 +1,6 @@
+# Project-scoped Codex MCP configuration.
+# Set RENDER_API_KEY in your shell or user environment before starting Codex.
+
+[mcp_servers.render]
+url = "https://mcp.render.com/mcp"
+bearer_token_env_var = "RENDER_API_KEY"
