@@ -254,6 +254,26 @@ describe("session server", () => {
     expect(response.json().error).toContain("Unknown approval");
   });
 
+  it("returns 400 when approval requests target unsupported intent types", async () => {
+    const server = await buildServer();
+    servers.push(server);
+
+    const response = await server.app.inject({
+      method: "POST",
+      url: "/rooms/room_demo/commands",
+      payload: {
+        commandId: "cmd_unsupported_intent_request",
+        type: "ai.intent.request",
+        intentId: "intent_npc_attitude",
+        intentType: "npc.attitude.change",
+        title: "Escalate goblin morale",
+        detail: "The goblin skirmisher should become openly hostile after the last exchange."
+      }
+    });
+
+    expect(response.statusCode).toBe(400);
+  });
+
   it("returns 400 for unknown campaign routes instead of leaking 500s", async () => {
     const server = await buildServer();
     servers.push(server);

@@ -45,14 +45,8 @@ export const canonChangeCommandSchema = baseCommandSchema.extend({
 export const aiIntentRequestCommandSchema = baseCommandSchema.extend({
   type: z.literal("ai.intent.request"),
   intentId: z.string(),
-  intentType: z.enum([
-    "suggestion.publish",
-    "recap.publish",
-    "surface.banner",
-    "canon.change",
-    "npc.attitude.change",
-    "world.tick.apply"
-  ]),
+  // Only intents with a concrete executor path should be requestable.
+  intentType: z.literal("world.tick.apply"),
   title: z.string(),
   detail: z.string()
 });

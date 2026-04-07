@@ -71,11 +71,15 @@ export async function issueRoomCommand(roomId: string, command: SessionCommand):
 }
 
 export async function requestAiIntentApproval(roomId: string, intent: SuggestedIntent): Promise<SessionMutationResponse> {
+  if (intent.type !== "world.tick.apply") {
+    throw new Error(`Unsupported approval intent: ${intent.type}`);
+  }
+
   return issueRoomCommand(roomId, {
     commandId: crypto.randomUUID(),
     type: "ai.intent.request",
     intentId: intent.id,
-    intentType: intent.type,
+    intentType: "world.tick.apply",
     title: intent.title,
     detail: intent.detail
   });
