@@ -20,6 +20,7 @@ export type LedgerEventType =
   | "memory.fact.created"
   | "world.tick.started"
   | "canon.change.proposed"
+  | "ai.intent.requested"
   | "ai.intent.approved"
   | "ai.intent.rejected"
   | "recap.updated"
@@ -48,6 +49,7 @@ export type LedgerEvent =
   | LedgerEventBase<"memory.fact.created", { fact: MemoryFact }>
   | LedgerEventBase<"world.tick.started", { clock: WorldClock; worldEvent?: WorldEvent }>
   | LedgerEventBase<"canon.change.proposed", { approval: ApprovalGate }>
+  | LedgerEventBase<"ai.intent.requested", { approval: ApprovalGate }>
   | LedgerEventBase<"ai.intent.approved", { approvalId: EntityId; intent: AIIntent }>
   | LedgerEventBase<"ai.intent.rejected", { approvalId: EntityId; reason?: string }>
   | LedgerEventBase<"recap.updated", { recap: string }>

@@ -1,28 +1,44 @@
-import type { CampaignSummary, CopilotContextPack, SessionRoomState } from "@project-game/domain";
+import type {
+  CampaignSummary,
+  CopilotContextPack,
+  CopilotResponse,
+  ServiceHealth,
+  SessionCommand,
+  SessionRoomState,
+  SuggestedIntent,
+  TranscriptTurnRequest,
+  VoiceDescriptor
+} from "@project-game/domain";
 
-export interface RoomStateResponse {
+export interface SessionMutationResponse {
+  roomId?: string;
   state: SessionRoomState;
+  context?: CopilotContextPack;
+}
+
+export interface RoomStateResponse extends SessionMutationResponse {
   context: CopilotContextPack;
 }
 
-export interface CopilotResponse {
-  context: CopilotContextPack;
-  messages: string[];
-  suggestedIntents: Array<{
-    id: string;
-    type: string;
-    title: string;
-    detail: string;
-    requiresApproval: boolean;
-  }>;
+function getErrorMessage(path: string, response: Response, fallback: string) {
+  return response
+    .json()
+    .then((payload: { error?: string }) => payload.error ?? fallback)
+    .catch(() => fallback)
+    .then((message) => `${message} (${path}, ${response.status})`);
 }
 
-export interface VoiceDescriptor {
-  provider: string;
-  roomName: string;
-  token: string;
-  status: "ready" | "mock" | "needs-config";
-  note: string;
+async function fetchSessionJson<T>(path: string, init?: RequestInit): Promise<T> {
+  const response = await fetch(`${getSessionApiBaseUrl()}${path}`, {
+    cache: "no-store",
+    ...init
+  });
+
+  if (!response.ok) {
+    throw new Error(await getErrorMessage(path, response, "Session request failed"));
+  }
+
+  return response.json();
 }
 
 export function getSessionApiBaseUrl() {
@@ -39,25 +55,128 @@ export function getSessionWebSocketUrl(roomId: string) {
 }
 
 export async function fetchCampaigns(): Promise<CampaignSummary[]> {
-  const response = await fetch(`${getSessionApiBaseUrl()}/campaigns`, {
-    cache: "no-store"
-  });
-
-  if (!response.ok) {
-    throw new Error("Failed to fetch campaigns");
-  }
-
-  return response.json();
+  return fetchSessionJson<CampaignSummary[]>("/campaigns");
 }
 
 export async function fetchRoomState(roomId: string): Promise<RoomStateResponse> {
-  const response = await fetch(`${getSessionApiBaseUrl()}/rooms/${roomId}/state`, {
-    cache: "no-store"
+  return fetchSessionJson<RoomStateResponse>(`/rooms/${roomId}/state`);
+}
+
+export async function issueRoomCommand(roomId: string, command: SessionCommand): Promise<SessionMutationResponse> {
+  return fetchSessionJson<SessionMutationResponse>(`/rooms/${roomId}/commands`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(command)
   });
+}
 
-  if (!response.ok) {
-    throw new Error("Failed to fetch room state");
-  }
+export async function requestAiIntentApproval(roomId: string, intent: SuggestedIntent): Promise<SessionMutationResponse> {
+  return issueRoomCommand(roomId, {
+    commandId: crypto.randomUUID(),
+    type: "ai.intent.request",
+    intentId: intent.id,
+    intentType: intent.type,
+    title: intent.title,
+    detail: intent.detail
+  });
+}
 
-  return response.json();
+export async function approveAiIntent(roomId: string, approvalId: string): Promise<SessionMutationResponse> {
+  return issueRoomCommand(roomId, {
+    commandId: crypto.randomUUID(),
+    type: "ai.intent.approve",
+    approvalId
+  });
+}
+
+export async function rejectAiIntent(roomId: string, approvalId: string, reason?: string): Promise<SessionMutationResponse> {
+  return issueRoomCommand(roomId, {
+    commandId: crypto.randomUUID(),
+    type: "ai.intent.reject",
+    approvalId,
+    reason
+  });
+}
+
+export async function moveToken(roomId: string, tokenId: string, x: number, y: number): Promise<SessionMutationResponse> {
+  return issueRoomCommand(roomId, {
+    commandId: crypto.randomUUID(),
+    type: "token.move",
+    tokenId,
+    x,
+    y
+  });
+}
+
+export async function rollDice(
+  roomId: string,
+  actorId: string,
+  label: string,
+  count: number,
+  sides: number,
+  modifier = 0
+): Promise<SessionMutationResponse> {
+  return issueRoomCommand(roomId, {
+    commandId: crypto.randomUUID(),
+    type: "dice.roll",
+    actorId,
+    label,
+    count,
+    sides,
+    modifier
+  });
+}
+
+export async function startCombat(roomId: string): Promise<SessionMutationResponse> {
+  return issueRoomCommand(roomId, {
+    commandId: crypto.randomUUID(),
+    type: "combat.start"
+  });
+}
+
+export async function advanceCombat(roomId: string): Promise<SessionMutationResponse> {
+  return issueRoomCommand(roomId, {
+    commandId: crypto.randomUUID(),
+    type: "combat.advance"
+  });
+}
+
+export async function createTranscriptTurn(campaignId: string, payload: TranscriptTurnRequest): Promise<SessionMutationResponse> {
+  return fetchSessionJson<SessionMutationResponse>(`/campaigns/${campaignId}/transcript-turns`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(payload)
+  });
+}
+
+export async function advanceWorldTick(campaignId: string): Promise<SessionMutationResponse> {
+  return fetchSessionJson<SessionMutationResponse>(`/campaigns/${campaignId}/world-tick`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: "{}"
+  });
+}
+
+export async function updateServiceHealth(
+  campaignId: string,
+  service: "voice" | "transcript" | "ai" | "memory",
+  status: ServiceHealth
+): Promise<SessionMutationResponse> {
+  return fetchSessionJson<SessionMutationResponse>(`/campaigns/${campaignId}/diagnostics/${service}`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ status })
+  });
+}
+
+export async function fetchCopilot(campaignId: string): Promise<CopilotResponse> {
+  return fetchSessionJson<CopilotResponse>(`/campaigns/${campaignId}/copilot`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: "{}"
+  });
+}
+
+export async function fetchVoiceDescriptor(campaignId: string, actorId = "actor_gm"): Promise<VoiceDescriptor> {
+  return fetchSessionJson<VoiceDescriptor>(`/campaigns/${campaignId}/voice-token?actorId=${actorId}`);
 }

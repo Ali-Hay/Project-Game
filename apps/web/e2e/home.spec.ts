@@ -56,3 +56,23 @@ test("companion shell buttons switch views and campaign actions propagate across
     page.locator(".companion-phone").getByText(/The enemy standard dips as the rain lashes harder across the shattered parapet\./i).first()
   ).toBeVisible();
 });
+
+test("approval-backed copilot intents update the live queue and campaign HQ", async ({ page }) => {
+  await page.goto("/campaigns/campaign_demo");
+
+  await page.getByRole("button", { name: /Refresh copilot/i }).click();
+  await expect(page.getByText(/Advance the front pressure clock/i)).toBeVisible();
+
+  await page.getByRole("button", { name: /Request approval/i }).click();
+  await expect(page.getByRole("button", { name: /Queued for review/i })).toBeVisible();
+  await expect(page.getByText(/Canon changes waiting on the DM/i)).toBeVisible();
+
+  await page.getByRole("button", { name: /Approve canon change/i }).first().click();
+  await expect(page.getByText(/No pending approvals/i)).toBeVisible();
+
+  await page.getByRole("link", { name: /Campaign HQ/i }).click();
+  await expect(page).toHaveURL(/\/campaigns\/.+\/hq$/);
+  await expect(page.getByText(/World tick 2/i)).toBeVisible();
+  await expect(page.getByText(/Recently resolved/i)).toBeVisible();
+  await expect(page.getByText(/Applied/i).first()).toBeVisible();
+});

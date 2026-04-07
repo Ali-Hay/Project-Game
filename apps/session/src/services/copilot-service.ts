@@ -2,15 +2,10 @@ import {
   assembleContextPack,
   intentRequiresApproval,
   type AIIntent,
+  type CopilotResponse,
   type LedgerEvent,
   type SessionRoomState
 } from "@project-game/domain";
-
-export interface CopilotResponse {
-  context: ReturnType<typeof assembleContextPack>;
-  messages: string[];
-  suggestedIntents: Array<AIIntent & { requiresApproval: boolean }>;
-}
 
 export class CopilotService {
   buildResponse(room: SessionRoomState, ledger: LedgerEvent[]): CopilotResponse {
@@ -25,13 +20,6 @@ export class CopilotService {
     ];
 
     const intents: AIIntent[] = [
-      {
-        id: "intent_recap_banner",
-        type: "surface.banner",
-        title: "Degraded transcript banner",
-        detail: "Show a clear banner that transcript capture is delayed while keeping the session live.",
-        suggestedBy: "copilot"
-      },
       {
         id: "intent_world_tick",
         type: "world.tick.apply",

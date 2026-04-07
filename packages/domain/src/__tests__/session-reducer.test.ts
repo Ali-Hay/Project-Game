@@ -1,10 +1,11 @@
 import { describe, expect, it } from "vitest";
 
-import { applySessionCommand, createDemoCampaignState } from "../reducers/session-reducer";
+import { applySessionCommand } from "../reducers/session-reducer";
+import { createTestSessionState } from "./fixtures";
 
 describe("session reducer", () => {
   it("moves a token and keeps the command idempotent", () => {
-    const state = createDemoCampaignState();
+    const state = createTestSessionState();
     const command = {
       commandId: "cmd_move",
       type: "token.move" as const,
@@ -22,7 +23,7 @@ describe("session reducer", () => {
   });
 
   it("starts combat and advances initiative", () => {
-    const state = createDemoCampaignState();
+    const state = createTestSessionState();
     const started = applySessionCommand(state, {
       commandId: "cmd_start",
       type: "combat.start"
@@ -35,5 +36,55 @@ describe("session reducer", () => {
 
     expect(started.state.encounter?.initiativeOrder.length).toBeGreaterThan(0);
     expect(advanced.state.encounter?.turnIndex).toBe(1);
+  });
+
+  it("deduplicates pending ai intent approvals by linked intent", () => {
+    const state = createTestSessionState();
+    const firstRequest = applySessionCommand(state, {
+      commandId: "cmd_request_one",
+      type: "ai.intent.request",
+      intentId: "intent_world_tick",
+      intentType: "world.tick.apply",
+      title: "Advance the front pressure clock",
+      detail: "Between sessions, advance one front based on the last recap and outstanding stakes."
+    });
+
+    const duplicateRequest = applySessionCommand(firstRequest.state, {
+      commandId: "cmd_request_two",
+      type: "ai.intent.request",
+      intentId: "intent_world_tick",
+      intentType: "world.tick.apply",
+      title: "Advance the front pressure clock",
+      detail: "Between sessions, advance one front based on the last recap and outstanding stakes."
+    });
+
+    expect(firstRequest.state.approvals).toHaveLength(1);
+    expect(firstRequest.events).toHaveLength(1);
+    expect(duplicateRequest.state.approvals).toHaveLength(1);
+    expect(duplicateRequest.events).toHaveLength(0);
+  });
+
+  it("records approval resolution timestamps", () => {
+    const state = createTestSessionState();
+    const requested = applySessionCommand(state, {
+      commandId: "cmd_request",
+      type: "ai.intent.request",
+      intentId: "intent_world_tick",
+      intentType: "world.tick.apply",
+      title: "Advance the front pressure clock",
+      detail: "Between sessions, advance one front based on the last recap and outstanding stakes."
+    });
+
+    const approvalId = requested.state.approvals[0]?.id;
+    expect(approvalId).toBeTruthy();
+
+    const approved = applySessionCommand(requested.state, {
+      commandId: "cmd_approve",
+      type: "ai.intent.approve",
+      approvalId: approvalId!
+    });
+
+    expect(approved.state.approvals[0]?.status).toBe("approved");
+    expect(approved.state.approvals[0]?.resolvedAt).toBeTruthy();
   });
 });

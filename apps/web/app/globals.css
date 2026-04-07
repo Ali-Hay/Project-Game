@@ -233,6 +233,7 @@ p {
 .section-heading,
 .campaign-link-card-header,
 .approval-card-header,
+.approval-card-meta,
 .front-card-header,
 .token-card-header,
 .companion-card-header,
@@ -528,6 +529,24 @@ p {
 
 .front-card-header {
   justify-content: space-between;
+}
+
+.approval-card-meta {
+  justify-content: space-between;
+  color: var(--muted);
+  font-size: 0.78rem;
+}
+
+.approval-card-actions,
+.intent-card-actions {
+  display: flex;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
+.approval-card-message {
+  color: #ffd5d2;
+  line-height: 1.5;
 }
 
 .front-card p {
@@ -941,6 +960,13 @@ p {
   line-height: 1.45;
 }
 
+.intent-card-proposal {
+  border-color: rgba(199, 164, 93, 0.3);
+  background:
+    linear-gradient(180deg, rgba(199, 164, 93, 0.12), transparent 90%),
+    rgba(255, 255, 255, 0.04);
+}
+
 .memory-fact-row {
   display: grid;
   gap: 4px;
@@ -1223,7 +1249,7 @@ p {
 
   .live-rail-tabs {
     display: grid;
-    grid-template-columns: repeat(2, minmax(0, 1fr));
+    grid-template-columns: repeat(3, minmax(0, 1fr));
     gap: 8px;
     position: sticky;
     top: 0;
@@ -1238,6 +1264,10 @@ p {
 
   .live-rail-panel-active {
     display: grid;
+  }
+
+  .copilot-queue-section {
+    display: none;
   }
 
   .companion-phone {

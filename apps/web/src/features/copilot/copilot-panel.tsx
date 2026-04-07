@@ -1,8 +1,17 @@
 "use client";
 
-import type { ApprovalGate, CopilotContextPack, ServiceHealth, SessionDiagnostics } from "@project-game/domain";
+import type {
+  ApprovalGate,
+  ApprovalStatus,
+  CopilotContextPack,
+  CopilotResponse,
+  ServiceHealth,
+  SessionDiagnostics,
+  SuggestedIntent,
+  VoiceDescriptor
+} from "@project-game/domain";
 
-import type { CopilotResponse, VoiceDescriptor } from "../../lib/session-api";
+import { ApprovalCard, type ApprovalActionState } from "../approvals/approval-card";
 
 interface CopilotPanelProps {
   recap: string;
@@ -11,11 +20,17 @@ interface CopilotPanelProps {
   approvals: ApprovalGate[];
   copilot: CopilotResponse | null;
   voice: VoiceDescriptor | null;
+  approvalActionState: Record<string, ApprovalActionState>;
+  intentErrorState: Record<string, string>;
+  requestingIntentIds: string[];
   onRefreshCopilot: () => void;
   onInjectTranscript: () => void;
   onAdvanceWorldTick: () => void;
   onToggleTranscriptHealth: () => void;
   onLoadVoice: () => void;
+  onRequestApproval: (intent: SuggestedIntent) => void;
+  onApproveApproval: (approvalId: string) => void;
+  onRejectApproval: (approvalId: string) => void;
 }
 
 function getHealthTone(status: ServiceHealth) {
@@ -31,8 +46,46 @@ function getHealthTone(status: ServiceHealth) {
   }
 }
 
-function formatApprovalSource(type: ApprovalGate["type"]) {
-  return type === "canon-change" ? "Canon change" : "AI intent";
+function getApprovalByIntentId(approvals: ApprovalGate[], intentId: string, status: ApprovalStatus) {
+  return approvals.find((approval) => approval.linkedId === intentId && approval.status === status);
+}
+
+function buildApprovalQueueSection(
+  pendingApprovals: ApprovalGate[],
+  approvalActionState: Record<string, ApprovalActionState>,
+  onApproveApproval: (approvalId: string) => void,
+  onRejectApproval: (approvalId: string) => void
+) {
+  return (
+    <div className="rail-section copilot-queue-section">
+      <div className="section-heading">
+        <div>
+          <p className="eyebrow">Approval queue</p>
+          <h3>Canon changes waiting on the DM</h3>
+        </div>
+        <span className={`status-chip status-chip-${pendingApprovals.length > 0 ? "warning" : "healthy"}`}>{pendingApprovals.length}</span>
+      </div>
+
+      <div className="stack-list">
+        {pendingApprovals.length > 0 ? (
+          pendingApprovals.map((approval) => (
+            <ApprovalCard
+              actionState={approvalActionState[approval.id]}
+              approval={approval}
+              key={approval.id}
+              onApprove={onApproveApproval}
+              onReject={onRejectApproval}
+            />
+          ))
+        ) : (
+          <article className="approval-card approval-card-empty">
+            <strong>No pending approvals</strong>
+            <p>Safe AI suggestions can flow without introducing canon ambiguity.</p>
+          </article>
+        )}
+      </div>
+    </div>
+  );
 }
 
 export function CopilotPanel({
@@ -42,13 +95,20 @@ export function CopilotPanel({
   approvals,
   copilot,
   voice,
+  approvalActionState,
+  intentErrorState,
+  requestingIntentIds,
   onRefreshCopilot,
   onInjectTranscript,
   onAdvanceWorldTick,
   onToggleTranscriptHealth,
-  onLoadVoice
+  onLoadVoice,
+  onRequestApproval,
+  onApproveApproval,
+  onRejectApproval
 }: CopilotPanelProps) {
   const pendingApprovals = approvals.filter((approval) => approval.status === "pending");
+  const queueSection = buildApprovalQueueSection(pendingApprovals, approvalActionState, onApproveApproval, onRejectApproval);
 
   return (
     <aside className="rail copilot-rail" aria-label="AI copilot rail">
@@ -62,7 +122,11 @@ export function CopilotPanel({
             Refresh copilot
           </button>
         </div>
+      </div>
 
+      {pendingApprovals.length > 0 ? queueSection : null}
+
+      <div className="rail-section">
         <div className="recap-card">
           <p className="eyebrow">Latest recap</p>
           <p>{recap}</p>
@@ -88,34 +152,7 @@ export function CopilotPanel({
         </div>
       </div>
 
-      <div className="rail-section">
-        <div className="section-heading">
-          <div>
-            <p className="eyebrow">Approval queue</p>
-            <h3>Canon changes waiting on the DM</h3>
-          </div>
-          <span className={`status-chip status-chip-${pendingApprovals.length > 0 ? "warning" : "healthy"}`}>{pendingApprovals.length}</span>
-        </div>
-
-        <div className="stack-list">
-          {pendingApprovals.length > 0 ? (
-            pendingApprovals.map((approval) => (
-              <article className="approval-card" key={approval.id}>
-                <div className="approval-card-header">
-                  <strong>{approval.title}</strong>
-                  <span>{formatApprovalSource(approval.type)}</span>
-                </div>
-                <p>{approval.detail}</p>
-              </article>
-            ))
-          ) : (
-            <article className="approval-card approval-card-empty">
-              <strong>No pending approvals</strong>
-              <p>Safe AI suggestions can flow without introducing canon ambiguity.</p>
-            </article>
-          )}
-        </div>
-      </div>
+      {pendingApprovals.length === 0 ? queueSection : null}
 
       <div className="rail-section">
         <div className="section-heading">
@@ -133,17 +170,37 @@ export function CopilotPanel({
               </article>
             ))}
 
-            {copilot.suggestedIntents.map((intent) => (
-              <article className="intent-card" key={intent.id}>
-                <div className="approval-card-header">
-                  <strong>{intent.title}</strong>
-                  <span className={`status-chip status-chip-${intent.requiresApproval ? "warning" : "healthy"}`}>
-                    {intent.requiresApproval ? "Approval" : "Auto-safe"}
-                  </span>
-                </div>
-                <p>{intent.detail}</p>
-              </article>
-            ))}
+            {copilot.suggestedIntents.map((intent) => {
+              const pendingApproval = getApprovalByIntentId(approvals, intent.id, "pending");
+              const requested = requestingIntentIds.includes(intent.id);
+              const requestError = intentErrorState[intent.id];
+
+              return (
+                <article className="intent-card intent-card-proposal" key={intent.id}>
+                  <div className="approval-card-header">
+                    <strong>{intent.title}</strong>
+                    <span className={`status-chip status-chip-${pendingApproval || requested ? "warning" : "healthy"}`}>
+                      {pendingApproval ? "Queued" : requested ? "Requesting..." : intent.requiresApproval ? "Approval" : "Auto-safe"}
+                    </span>
+                  </div>
+
+                  <p>{intent.detail}</p>
+
+                  <div className="intent-card-actions">
+                    <button
+                      className="primary-button"
+                      disabled={Boolean(pendingApproval) || requested || !intent.requiresApproval}
+                      onClick={() => onRequestApproval(intent)}
+                      type="button"
+                    >
+                      {pendingApproval ? "Queued for review" : requested ? "Requesting..." : "Request approval"}
+                    </button>
+                  </div>
+
+                  {requestError ? <p className="approval-card-message">{requestError}</p> : null}
+                </article>
+              );
+            })}
           </div>
         ) : (
           <article className="copilot-note copilot-note-empty">

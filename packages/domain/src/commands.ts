@@ -42,9 +42,8 @@ export const canonChangeCommandSchema = baseCommandSchema.extend({
   sourceIntentId: z.string()
 });
 
-export const aiIntentApproveCommandSchema = baseCommandSchema.extend({
-  type: z.literal("ai.intent.approve"),
-  approvalId: z.string(),
+export const aiIntentRequestCommandSchema = baseCommandSchema.extend({
+  type: z.literal("ai.intent.request"),
   intentId: z.string(),
   intentType: z.enum([
     "suggestion.publish",
@@ -56,6 +55,11 @@ export const aiIntentApproveCommandSchema = baseCommandSchema.extend({
   ]),
   title: z.string(),
   detail: z.string()
+});
+
+export const aiIntentApproveCommandSchema = baseCommandSchema.extend({
+  type: z.literal("ai.intent.approve"),
+  approvalId: z.string()
 });
 
 export const aiIntentRejectCommandSchema = baseCommandSchema.extend({
@@ -71,6 +75,7 @@ export const commandSchema = z.discriminatedUnion("type", [
   combatStartCommandSchema,
   combatAdvanceCommandSchema,
   canonChangeCommandSchema,
+  aiIntentRequestCommandSchema,
   aiIntentApproveCommandSchema,
   aiIntentRejectCommandSchema
 ]);

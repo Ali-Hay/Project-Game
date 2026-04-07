@@ -25,6 +25,39 @@ function safeSend(socket: SocketLike | undefined, payload: unknown) {
   }
 }
 
+// Keep campaign-scoped routes on one 4xx/5xx contract instead of drifting by endpoint.
+function mapRequestError(error: unknown, fallbackMessage: string) {
+  const message = error instanceof Error ? error.message : fallbackMessage;
+
+  if (
+    message.startsWith("Unknown campaign:") ||
+    message.startsWith("Unknown room:") ||
+    message.startsWith("Unknown token:") ||
+    message.startsWith("Unknown approval:") ||
+    message.startsWith("Approval is not pending:") ||
+    message.startsWith("Approval does not resolve an AI intent:") ||
+    message.startsWith("Unsupported AI intent:") ||
+    message.startsWith("AI intent does not require approval:")
+  ) {
+    return { statusCode: 400, message };
+  }
+
+  return { statusCode: 500, message: fallbackMessage };
+}
+
+async function withRequestBoundary<T>(
+  reply: { code: (statusCode: number) => { send: (payload: unknown) => unknown } },
+  fallbackMessage: string,
+  action: () => Promise<T> | T
+) {
+  try {
+    return await action();
+  } catch (error) {
+    const mapped = mapRequestError(error, fallbackMessage);
+    return reply.code(mapped.statusCode).send({ error: mapped.message });
+  }
+}
+
 export async function buildServer() {
   const config = readConfig();
   const app = Fastify({ logger: false });
@@ -128,17 +161,19 @@ export async function buildServer() {
     }
   });
 
-  app.post("/campaigns/:campaignId/world-tick", async (request) => {
-    const { campaignId } = request.params as { campaignId: string };
-    const result = worldTickWorker.tick(campaignId);
-    outbox.enqueue({ roomId: result.roomId, sourceEvents: result.events });
-    broadcast(result.roomId, {
-      type: "state.updated",
-      state: result.state,
-      events: result.events,
-      context: roomStore.getContext(campaignId)
+  app.post("/campaigns/:campaignId/world-tick", async (request, reply) => {
+    return withRequestBoundary(reply, "World tick failed", () => {
+      const { campaignId } = request.params as { campaignId: string };
+      const result = worldTickWorker.tick(campaignId);
+      outbox.enqueue({ roomId: result.roomId, sourceEvents: result.events });
+      broadcast(result.roomId, {
+        type: "state.updated",
+        state: result.state,
+        events: result.events,
+        context: roomStore.getContext(campaignId)
+      });
+      return result;
     });
-    return result;
   });
 
   app.post("/campaigns/:campaignId/diagnostics/:service", async (request, reply) => {
@@ -163,21 +198,28 @@ export async function buildServer() {
     }
   });
 
-  app.get("/campaigns/:campaignId/context", async (request) => {
-    const { campaignId } = request.params as { campaignId: string };
-    return roomStore.getContext(campaignId);
+  app.get("/campaigns/:campaignId/context", async (request, reply) => {
+    return withRequestBoundary(reply, "Context lookup failed", () => {
+      const { campaignId } = request.params as { campaignId: string };
+      return roomStore.getContext(campaignId);
+    });
   });
 
-  app.post("/campaigns/:campaignId/copilot", async (request) => {
-    const { campaignId } = request.params as { campaignId: string };
-    const room = roomStore.findRoomByCampaign(campaignId);
-    return copilotService.buildResponse(room, roomStore.getLedger(room.roomId));
+  app.post("/campaigns/:campaignId/copilot", async (request, reply) => {
+    return withRequestBoundary(reply, "Copilot request failed", () => {
+      const { campaignId } = request.params as { campaignId: string };
+      const room = roomStore.findRoomByCampaign(campaignId);
+      return copilotService.buildResponse(room, roomStore.getLedger(room.roomId));
+    });
   });
 
-  app.get("/campaigns/:campaignId/voice-token", async (request) => {
-    const { campaignId } = request.params as { campaignId: string };
-    const { actorId = "actor_gm" } = request.query as { actorId?: string };
-    return voiceProvider.issueDescriptor(campaignId, actorId);
+  app.get("/campaigns/:campaignId/voice-token", async (request, reply) => {
+    return withRequestBoundary(reply, "Voice token request failed", () => {
+      const { campaignId } = request.params as { campaignId: string };
+      roomStore.findRoomByCampaign(campaignId);
+      const { actorId = "actor_gm" } = request.query as { actorId?: string };
+      return voiceProvider.issueDescriptor(campaignId, actorId);
+    });
   });
 
   app.get("/rooms/:roomId/ws", { websocket: true }, (socket, request) => {
