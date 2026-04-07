@@ -108,6 +108,8 @@ export function CopilotPanel({
   onRejectApproval
 }: CopilotPanelProps) {
   const pendingApprovals = approvals.filter((approval) => approval.status === "pending");
+  const reviewedIntentIds = new Set(approvals.map((approval) => approval.linkedId));
+  const visibleSuggestedIntents = copilot?.suggestedIntents.filter((intent) => !reviewedIntentIds.has(intent.id)) ?? [];
   const queueSection = buildApprovalQueueSection(pendingApprovals, approvalActionState, onApproveApproval, onRejectApproval);
 
   return (
@@ -170,7 +172,7 @@ export function CopilotPanel({
               </article>
             ))}
 
-            {copilot.suggestedIntents.map((intent) => {
+            {visibleSuggestedIntents.map((intent) => {
               const pendingApproval = getApprovalByIntentId(approvals, intent.id, "pending");
               const requested = requestingIntentIds.includes(intent.id);
               const requestError = intentErrorState[intent.id];
@@ -201,6 +203,12 @@ export function CopilotPanel({
                 </article>
               );
             })}
+
+            {visibleSuggestedIntents.length === 0 ? (
+              <article className="copilot-note copilot-note-empty">
+                <p>Current approval-aware suggestions have already been queued or resolved. Refresh the copilot for a fresh recommendation.</p>
+              </article>
+            ) : null}
           </div>
         ) : (
           <article className="copilot-note copilot-note-empty">
