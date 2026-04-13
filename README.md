@@ -36,4 +36,7 @@ Before opening a PR, run `corepack pnpm verify`.
 ## Project docs
 
 - `CLAUDE.md` documents the project commands, skill routing, and Render deploy workflow.
+- `DESIGN.md` is the source of truth for UI direction, typography, color, spacing, and motion.
 - `CHANGELOG.md` tracks shipped releases and release notes.
+- `TODOS.md` tracks intentionally deferred follow-up work.
+- `.github/*.md` and `.planning/*.md` preserve prototype and world-building reference notes from earlier planning passes.
