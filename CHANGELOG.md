@@ -2,6 +2,11 @@
 
 All notable changes to this project will be documented in this file.
 
+## [0.2.0.1] - 2026-04-13
+
+### Fixed
+- The session API primary URL now returns a small status response instead of Fastify's default route-not-found JSON, so Render's service URL is safe to open directly while `/health` remains the deploy check.
+
 ## [0.2.0.0] - 2026-04-13
 
 ### Added
