@@ -10,7 +10,7 @@
     "dev:web": "corepack pnpm --filter @project-game/domain build && corepack pnpm --filter @project-game/web dev",
     "build": "corepack pnpm --filter @project-game/domain build && corepack pnpm --filter @project-game/session build && corepack pnpm --filter @project-game/web build",
     "typecheck": "corepack pnpm --recursive typecheck",
-    "test": "vitest run --config vitest.config.ts",
+    "test": "corepack pnpm --filter @project-game/domain build && vitest run --config vitest.config.ts",
     "test:e2e": "playwright test",
     "verify": "corepack pnpm typecheck && corepack pnpm test && corepack pnpm build"
   },
