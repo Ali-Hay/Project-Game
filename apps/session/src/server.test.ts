@@ -300,6 +300,23 @@ describe("session server", () => {
     expect(voice.statusCode).toBe(400);
   });
 
+  it("returns a friendly API root response", async () => {
+    const server = await buildServer();
+    servers.push(server);
+
+    const response = await server.app.inject({
+      method: "GET",
+      url: "/"
+    });
+
+    expect(response.statusCode).toBe(200);
+    expect(response.json()).toEqual({
+      status: "ok",
+      service: "project-game-session",
+      health: "/health"
+    });
+  });
+
   it("reports scaffold runtime capabilities in health output", async () => {
     const server = await buildServer();
     servers.push(server);

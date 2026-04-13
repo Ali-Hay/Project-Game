@@ -97,6 +97,12 @@ export async function buildServer() {
     });
   });
 
+  app.get("/", async () => ({
+    status: "ok",
+    service: "project-game-session",
+    health: "/health"
+  }));
+
   app.get("/health", async () => ({
     status: "ok",
     runtime,
