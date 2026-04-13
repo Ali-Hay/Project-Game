@@ -1,10 +1,11 @@
 import { describe, expect, it } from "vitest";
 
-import { assembleContextPack, buildLedgerEvent, buildMemoryArtifacts, createDemoCampaignState, createTranscriptTurn } from "../index";
+import { assembleContextPack, buildLedgerEvent, buildMemoryArtifacts, createTranscriptTurn } from "../index";
+import { createTestSessionState } from "./fixtures";
 
 describe("memory pipeline", () => {
   it("derives facts and compacts a recap from ledger events", () => {
-    const state = createDemoCampaignState();
+    const state = createTestSessionState();
     const events = [
       buildLedgerEvent(state.campaign, "transcript.turn.created", {
         turn: createTranscriptTurn("Mira Vale", "player", "I charge across the rubble and pin the goblin in place.")

@@ -3,11 +3,27 @@
 import Link from "next/link";
 import { useEffect, useMemo, useState, useTransition } from "react";
 
-import type { Actor, CopilotContextPack, ServiceHealth, SessionRoomState } from "@project-game/domain";
+import type { Actor, CopilotContextPack, CopilotResponse, ServiceHealth, SessionRoomState, SuggestedIntent, VoiceDescriptor } from "@project-game/domain";
 
+import { ApprovalCard, type ApprovalActionState } from "../approvals/approval-card";
 import { CopilotPanel } from "../copilot/copilot-panel";
 import { TabletopBoard } from "../tabletop/tabletop-board";
-import { getSessionApiBaseUrl, getSessionWebSocketUrl, type CopilotResponse, type VoiceDescriptor } from "../../lib/session-api";
+import {
+  advanceCombat as advanceCombatRequest,
+  advanceWorldTick as advanceWorldTickRequest,
+  approveAiIntent,
+  createTranscriptTurn,
+  fetchCopilot,
+  fetchVoiceDescriptor,
+  getSessionWebSocketUrl,
+  moveToken,
+  rejectAiIntent,
+  requestAiIntentApproval,
+  rollDice,
+  startCombat as startCombatRequest,
+  type SessionMutationResponse,
+  updateServiceHealth
+} from "../../lib/session-api";
 
 interface CampaignShellProps {
   campaignId: string;
@@ -19,7 +35,8 @@ interface CampaignShellProps {
 
 type ShellMode = "live" | "hq" | "companion";
 type CompanionSection = "sheet" | "dice" | "recap" | "quest";
-type LiveRailTab = "transcript" | "pressure";
+type LiveRailTab = "transcript" | "pressure" | "approvals";
+type ApprovalActionMap = Record<string, ApprovalActionState>;
 
 const shellModes: Array<{ id: ShellMode; label: string; summary: string }> = [
   { id: "live", label: "Live Session", summary: "Map, transcript rail, and copilot approvals." },
@@ -85,6 +102,9 @@ export function CampaignShell({ campaignId, roomId, initialState, initialContext
   const [voice, setVoice] = useState<VoiceDescriptor | null>(null);
   const [companionSection, setCompanionSection] = useState<CompanionSection>("sheet");
   const [liveRailTab, setLiveRailTab] = useState<LiveRailTab>("transcript");
+  const [approvalActionState, setApprovalActionState] = useState<ApprovalActionMap>({});
+  const [intentErrorState, setIntentErrorState] = useState<Record<string, string>>({});
+  const [requestingIntentIds, setRequestingIntentIds] = useState<string[]>([]);
   const [isPending, startTransition] = useTransition();
 
   useEffect(() => {
@@ -139,83 +159,81 @@ export function CampaignShell({ campaignId, roomId, initialState, initialContext
   );
 
   const players = useMemo(() => actorList.filter((actor) => actor.role === "player"), [actorList]);
+  const recentlyResolvedApprovals = useMemo(
+    () =>
+      state.approvals
+        .filter((approval) => approval.status !== "pending")
+        .sort((left, right) => {
+          const leftTimestamp = left.resolvedAt ?? left.requestedAt;
+          const rightTimestamp = right.resolvedAt ?? right.requestedAt;
+          return rightTimestamp.localeCompare(leftTimestamp);
+        })
+        .slice(0, 3),
+    [state.approvals]
+  );
 
-  const postJson = async <T,>(path: string, body?: unknown): Promise<T> => {
-    const response = await fetch(`${getSessionApiBaseUrl()}${path}`, {
-      method: body ? "POST" : "GET",
-      headers: body ? { "Content-Type": "application/json" } : undefined,
-      body: body ? JSON.stringify(body) : undefined
-    });
-
-    if (!response.ok) {
-      throw new Error(`Request failed for ${path}`);
-    }
-
-    return response.json();
-  };
-
-  const applyRoomMutation = (payload: { state: SessionRoomState; context?: CopilotContextPack }) => {
+  const applyRoomMutation = (payload: SessionMutationResponse) => {
     setState(payload.state);
     if (payload.context) {
       setContext(payload.context);
     }
   };
 
-  const issueCommand = async (command: Record<string, unknown>) => {
-    const payload = await postJson<{ state: SessionRoomState; context?: CopilotContextPack }>(`/rooms/${roomId}/commands`, command);
-    applyRoomMutation(payload);
-  };
+  useEffect(() => {
+    const pendingIntentIds = new Set(pendingApprovals.map((approval) => approval.linkedId));
+
+    setRequestingIntentIds((current) => current.filter((intentId) => !pendingIntentIds.has(intentId)));
+    setIntentErrorState((current) => {
+      const next = { ...current };
+      for (const intentId of pendingIntentIds) {
+        delete next[intentId];
+      }
+      return next;
+    });
+    setApprovalActionState((current) => {
+      const next = { ...current };
+
+      for (const approvalId of Object.keys(next)) {
+        const approval = state.approvals.find((entry) => entry.id === approvalId);
+        if (!approval || approval.status !== "pending") {
+          delete next[approvalId];
+        }
+      }
+
+      return next;
+    });
+  }, [pendingApprovals, state.approvals]);
 
   const nudgeToken = (tokenId: string, dx: number, dy: number) => {
     const token = state.tokens[tokenId];
     if (!token) return;
 
     startTransition(() => {
-      void issueCommand({
-        commandId: crypto.randomUUID(),
-        type: "token.move",
-        tokenId,
-        x: Math.max(0, Math.min(9, token.x + dx)),
-        y: Math.max(0, Math.min(9, token.y + dy))
-      });
+      void moveToken(roomId, tokenId, Math.max(0, Math.min(9, token.x + dx)), Math.max(0, Math.min(9, token.y + dy))).then(applyRoomMutation);
     });
   };
 
   const rollCheck = (actorId: string, label: string) => {
     startTransition(() => {
-      void issueCommand({
-        commandId: crypto.randomUUID(),
-        type: "dice.roll",
-        actorId,
-        label,
-        count: 1,
-        sides: 20,
-        modifier: 0
-      });
+      void rollDice(roomId, actorId, label, 1, 20).then(applyRoomMutation);
     });
   };
 
   const startCombat = () => {
     startTransition(() => {
-      void issueCommand({
-        commandId: crypto.randomUUID(),
-        type: "combat.start"
-      });
+      void startCombatRequest(roomId).then(applyRoomMutation);
     });
   };
 
   const advanceCombat = () => {
     startTransition(() => {
-      void issueCommand({
-        commandId: crypto.randomUUID(),
-        type: "combat.advance"
-      });
+      void advanceCombatRequest(roomId).then(applyRoomMutation);
     });
   };
 
   const injectTranscript = () => {
     startTransition(() => {
-      void postJson<{ state: SessionRoomState }>(`/campaigns/${state.campaign.id}/transcript-turns`, {
+      void createTranscriptTurn(state.campaign.id, {
         speaker: "Dungeon Master",
         speakerRole: "gm",
         text: "The enemy standard dips as the rain lashes harder across the shattered parapet."
@@ -225,27 +243,90 @@ export function CampaignShell({ campaignId, roomId, initialState, initialContext
 
   const advanceWorldTick = () => {
     startTransition(() => {
-      void postJson<{ state: SessionRoomState }>(`/campaigns/${state.campaign.id}/world-tick`, {}).then(applyRoomMutation);
+      void advanceWorldTickRequest(state.campaign.id).then(applyRoomMutation);
     });
   };
 
   const toggleTranscriptHealth = () => {
     startTransition(() => {
-      void postJson<{ state: SessionRoomState }>(`/campaigns/${state.campaign.id}/diagnostics/transcript`, {
-        status: state.diagnostics.transcript === "healthy" ? "degraded" : "healthy"
-      }).then(applyRoomMutation);
+      void updateServiceHealth(state.campaign.id, "transcript", state.diagnostics.transcript === "healthy" ? "degraded" : "healthy").then(
+        applyRoomMutation
+      );
     });
   };
 
   const refreshCopilot = () => {
     startTransition(() => {
-      void postJson<CopilotResponse>(`/campaigns/${state.campaign.id}/copilot`, {}).then(setCopilot);
+      void fetchCopilot(state.campaign.id).then(setCopilot);
     });
   };
 
   const loadVoice = () => {
     startTransition(() => {
-      void postJson<VoiceDescriptor>(`/campaigns/${state.campaign.id}/voice-token?actorId=actor_gm`).then(setVoice);
+      void fetchVoiceDescriptor(state.campaign.id).then(setVoice);
+    });
+  };
+
+  const requestApproval = (intent: SuggestedIntent) => {
+    setRequestingIntentIds((current) => (current.includes(intent.id) ? current : [...current, intent.id]));
+    setIntentErrorState((current) => {
+      const next = { ...current };
+      delete next[intent.id];
+      return next;
+    });
+
+    startTransition(() => {
+      void requestAiIntentApproval(roomId, intent)
+        .then(applyRoomMutation)
+        .catch((error: unknown) => {
+          setRequestingIntentIds((current) => current.filter((intentId) => intentId !== intent.id));
+          setIntentErrorState((current) => ({
+            ...current,
+            [intent.id]: error instanceof Error ? error.message : "Could not queue approval."
+          }));
+        });
+    });
+  };
+
+  const approveApproval = (approvalId: string) => {
+    setApprovalActionState((current) => ({
+      ...current,
+      [approvalId]: { phase: "approving" }
+    }));
+
+    startTransition(() => {
+      void approveAiIntent(roomId, approvalId)
+        .then(applyRoomMutation)
+        .catch((error: unknown) => {
+          setApprovalActionState((current) => ({
+            ...current,
+            [approvalId]: {
+              phase: "failed",
+              message: error instanceof Error ? error.message : "Could not apply this approval."
+            }
+          }));
+        });
+    });
+  };
+
+  const rejectApproval = (approvalId: string) => {
+    setApprovalActionState((current) => ({
+      ...current,
+      [approvalId]: { phase: "rejecting" }
+    }));
+
+    startTransition(() => {
+      void rejectAiIntent(roomId, approvalId)
+        .then(applyRoomMutation)
+        .catch((error: unknown) => {
+          setApprovalActionState((current) => ({
+            ...current,
+            [approvalId]: {
+              phase: "failed",
+              message: error instanceof Error ? error.message : "Could not reject this approval."
+            }
+          }));
+        });
     });
   };
 
@@ -341,6 +422,14 @@ export function CampaignShell({ campaignId, roomId, initialState, initialContext
               >
                 Pressure
               </button>
+              <button
+                aria-pressed={liveRailTab === "approvals"}
+                className={liveRailTab === "approvals" ? "live-rail-tab-active" : ""}
+                onClick={() => setLiveRailTab("approvals")}
+                type="button"
+              >
+                Approvals
+              </button>
             </div>
 
             <div className={`rail-section live-rail-panel ${liveRailTab === "transcript" ? "live-rail-panel-active" : ""}`}>
@@ -393,6 +482,35 @@ export function CampaignShell({ campaignId, roomId, initialState, initialContext
                 ))}
               </div>
             </div>
+
+            <div className={`rail-section live-rail-panel ${liveRailTab === "approvals" ? "live-rail-panel-active" : ""}`}>
+              <div className="section-heading">
+                <div>
+                  <p className="eyebrow">Approvals</p>
+                  <h3>Resolve canon changes fast</h3>
+                </div>
+                <span className={`status-chip status-chip-${pendingApprovals.length > 0 ? "warning" : "healthy"}`}>{pendingApprovals.length}</span>
+              </div>
+
+              <div className="stack-list">
+                {pendingApprovals.length > 0 ? (
+                  pendingApprovals.map((approval) => (
+                    <ApprovalCard
+                      actionState={approvalActionState[approval.id]}
+                      approval={approval}
+                      key={approval.id}
+                      onApprove={approveApproval}
+                      onReject={rejectApproval}
+                    />
+                  ))
+                ) : (
+                  <article className="approval-card approval-card-empty">
+                    <strong>No canon changes waiting</strong>
+                    <p>The live desk is clear. New AI proposals will appear here without leaving the map.</p>
+                  </article>
+                )}
+              </div>
+            </div>
           </aside>
 
           <div className="session-main">
@@ -410,15 +528,21 @@ export function CampaignShell({ campaignId, roomId, initialState, initialContext
           </div>
 
           <CopilotPanel
+            approvalActionState={approvalActionState}
             approvals={state.approvals}
             context={context}
             copilot={copilot}
             diagnostics={state.diagnostics}
+            intentErrorState={intentErrorState}
             onAdvanceWorldTick={advanceWorldTick}
+            onApproveApproval={approveApproval}
             onInjectTranscript={injectTranscript}
             onLoadVoice={loadVoice}
+            onRejectApproval={rejectApproval}
             onRefreshCopilot={refreshCopilot}
+            onRequestApproval={requestApproval}
             onToggleTranscriptHealth={toggleTranscriptHealth}
+            requestingIntentIds={requestingIntentIds}
             recap={state.lastRecap}
             voice={voice}
           />
@@ -529,18 +653,40 @@ export function CampaignShell({ campaignId, roomId, initialState, initialContext
               <div className="stack-list">
                 {pendingApprovals.length > 0 ? (
                   pendingApprovals.map((approval) => (
-                    <article className="approval-card" key={approval.id}>
-                      <div className="approval-card-header">
-                        <strong>{approval.title}</strong>
-                        <time dateTime={approval.requestedAt}>{formatShortDate(approval.requestedAt)}</time>
-                      </div>
-                      <p>{approval.detail}</p>
-                    </article>
+                    <ApprovalCard
+                      actionState={approvalActionState[approval.id]}
+                      approval={approval}
+                      key={approval.id}
+                      onApprove={approveApproval}
+                      onReject={rejectApproval}
+                    />
                   ))
                 ) : (
                   <article className="approval-card approval-card-empty">
                     <strong>No canon changes waiting</strong>
                     <p>The world can advance without DM intervention right now.</p>
+                  </article>
+                )}
+              </div>
+            </div>
+
+            <div className="rail-section">
+              <div className="section-heading">
+                <div>
+                  <p className="eyebrow">Recently resolved</p>
+                  <h3>Trust the last few decisions</h3>
+                </div>
+              </div>
+
+              <div className="stack-list">
+                {recentlyResolvedApprovals.length > 0 ? (
+                  recentlyResolvedApprovals.map((approval) => (
+                    <ApprovalCard approval={approval} key={approval.id} showResolvedAt />
+                  ))
+                ) : (
+                  <article className="approval-card approval-card-empty">
+                    <strong>No recent resolutions</strong>
+                    <p>Approve or reject a canon change to leave a short audit trail for the next prep pass.</p>
                   </article>
                 )}
               </div>

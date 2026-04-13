@@ -158,7 +158,9 @@ export interface ApprovalGate {
   detail: string;
   status: ApprovalStatus;
   linkedId: EntityId;
+  intentType?: AIIntentType;
   requestedAt: string;
+  resolvedAt?: string;
 }
 
 export interface CopilotContextPack {
@@ -220,4 +222,22 @@ export interface CampaignSummary {
   campaign: Campaign;
   activeScene: Scene;
   diagnostics: SessionDiagnostics;
+}
+
+export interface SuggestedIntent extends AIIntent {
+  requiresApproval: boolean;
+}
+
+export interface CopilotResponse {
+  context: CopilotContextPack;
+  messages: string[];
+  suggestedIntents: SuggestedIntent[];
+}
+
+export interface VoiceDescriptor {
+  provider: string;
+  roomName: string;
+  token: string;
+  status: "ready" | "mock" | "needs-config";
+  note: string;
 }

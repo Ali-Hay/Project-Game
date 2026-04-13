@@ -162,6 +162,144 @@ describe("session server", () => {
     expect(state.memoryFacts).toHaveLength(1);
   });
 
+  it("requests, deduplicates, and executes approval-backed world tick intents", async () => {
+    const server = await buildServer();
+    servers.push(server);
+
+    const requestPayload = {
+      commandId: "cmd_request_ai_one",
+      type: "ai.intent.request",
+      intentId: "intent_world_tick",
+      intentType: "world.tick.apply",
+      title: "Advance the front pressure clock",
+      detail: "Between sessions, advance one front based on the last recap and outstanding stakes."
+    };
+
+    const firstRequest = await server.app.inject({
+      method: "POST",
+      url: "/rooms/room_demo/commands",
+      payload: requestPayload
+    });
+
+    expect(firstRequest.statusCode).toBe(200);
+
+    const secondRequest = await server.app.inject({
+      method: "POST",
+      url: "/rooms/room_demo/commands",
+      payload: {
+        ...requestPayload,
+        commandId: "cmd_request_ai_two"
+      }
+    });
+
+    expect(secondRequest.statusCode).toBe(200);
+    expect(secondRequest.json().events).toHaveLength(0);
+
+    const requestedState = (
+      await server.app.inject({
+        method: "GET",
+        url: "/rooms/room_demo/state"
+      })
+    ).json().state;
+
+    expect(requestedState.approvals.filter((approval: { status: string }) => approval.status === "pending")).toHaveLength(1);
+
+    const approvalId = requestedState.approvals[0].id;
+
+    const approvalResponse = await server.app.inject({
+      method: "POST",
+      url: "/rooms/room_demo/commands",
+      payload: {
+        commandId: "cmd_approve_ai",
+        type: "ai.intent.approve",
+        approvalId
+      }
+    });
+
+    expect(approvalResponse.statusCode).toBe(200);
+    expect(approvalResponse.json().state.worldClock.tick).toBe(2);
+    expect(approvalResponse.json().state.inbox[0].title).toBe("World tick 2");
+
+    await new Promise((resolve) => setTimeout(resolve, 25));
+
+    const approvedStateResponse = await server.app.inject({
+      method: "GET",
+      url: "/rooms/room_demo/state"
+    });
+
+    const approvedState = approvedStateResponse.json().state;
+    const approvedGate = approvedState.approvals.find((approval: { id: string }) => approval.id === approvalId);
+
+    expect(approvedGate.status).toBe("approved");
+    expect(approvedGate.resolvedAt).toBeTruthy();
+    expect(approvedState.worldClock.tick).toBe(2);
+    expect(approvedState.memoryFacts.length).toBeGreaterThan(0);
+  });
+
+  it("returns 400 when approval commands target unknown approvals", async () => {
+    const server = await buildServer();
+    servers.push(server);
+
+    const response = await server.app.inject({
+      method: "POST",
+      url: "/rooms/room_demo/commands",
+      payload: {
+        commandId: "cmd_missing_approval",
+        type: "ai.intent.approve",
+        approvalId: "approval_missing"
+      }
+    });
+
+    expect(response.statusCode).toBe(400);
+    expect(response.json().error).toContain("Unknown approval");
+  });
+
+  it("returns 400 when approval requests target unsupported intent types", async () => {
+    const server = await buildServer();
+    servers.push(server);
+
+    const response = await server.app.inject({
+      method: "POST",
+      url: "/rooms/room_demo/commands",
+      payload: {
+        commandId: "cmd_unsupported_intent_request",
+        type: "ai.intent.request",
+        intentId: "intent_npc_attitude",
+        intentType: "npc.attitude.change",
+        title: "Escalate goblin morale",
+        detail: "The goblin skirmisher should become openly hostile after the last exchange."
+      }
+    });
+
+    expect(response.statusCode).toBe(400);
+  });
+
+  it("returns 400 for unknown campaign routes instead of leaking 500s", async () => {
+    const server = await buildServer();
+    servers.push(server);
+
+    const [worldTick, copilot, voice] = await Promise.all([
+      server.app.inject({
+        method: "POST",
+        url: "/campaigns/missing/world-tick",
+        payload: {}
+      }),
+      server.app.inject({
+        method: "POST",
+        url: "/campaigns/missing/copilot",
+        payload: {}
+      }),
+      server.app.inject({
+        method: "GET",
+        url: "/campaigns/missing/voice-token"
+      })
+    ]);
+
+    expect(worldTick.statusCode).toBe(400);
+    expect(copilot.statusCode).toBe(400);
+    expect(voice.statusCode).toBe(400);
+  });
+
   it("reports scaffold runtime capabilities in health output", async () => {
     const server = await buildServer();
     servers.push(server);

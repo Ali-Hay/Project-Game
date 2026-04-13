@@ -1,7 +1,7 @@
 import type { SessionCommand } from "../commands";
 import { buildLedgerEvent, createEventId, createTimestamp } from "../events";
 import type { LedgerEvent } from "../events";
-import type { AIIntent, ApprovalGate, Campaign, Encounter, SessionRoomState, Token, TranscriptTurn } from "../types";
+import type { AIIntent, ApprovalGate, Encounter, SessionRoomState, Token, TranscriptTurn } from "../types";
 
 export interface CommandResult {
   state: SessionRoomState;
@@ -10,129 +10,6 @@ export interface CommandResult {
 
 export interface CommandOptions {
   random?: () => number;
-}
-
-export function createDemoCampaignState(): SessionRoomState {
-  const campaign: Campaign = {
-    id: "campaign_demo",
-    name: "The Candlekeep Breach",
-    summary: "A home-group campaign focused on fast tactical play and living-world memory.",
-    sessionId: "session_demo"
-  };
-
-  const actorIds = {
-    gm: "actor_gm",
-    fighter: "actor_fighter",
-    cleric: "actor_cleric",
-    goblin: "actor_goblin"
-  };
-
-  const tokens: Record<string, Token> = {
-    token_fighter: {
-      id: "token_fighter",
-      actorId: actorIds.fighter,
-      label: "Mira",
-      x: 3,
-      y: 5,
-      inEncounter: true
-    },
-    token_cleric: {
-      id: "token_cleric",
-      actorId: actorIds.cleric,
-      label: "Thorn",
-      x: 4,
-      y: 5,
-      inEncounter: true
-    },
-    token_goblin: {
-      id: "token_goblin",
-      actorId: actorIds.goblin,
-      label: "Goblin Skirmisher",
-      x: 8,
-      y: 4,
-      inEncounter: true
-    }
-  };
-
-  return {
-    roomId: "room_demo",
-    campaign,
-    scene: {
-      id: "scene_gatehouse",
-      name: "Broken Gatehouse",
-      mapId: "map_gatehouse",
-      activeLayerIds: ["layer_base", "layer_fog"],
-      description: "Rain lashes the ruined gatehouse while the war camp stirs beyond the walls."
-    },
-    map: {
-      id: "map_gatehouse",
-      name: "Gatehouse Assault",
-      gridSize: 70,
-      layers: [
-        { id: "layer_base", name: "Terrain", kind: "terrain" },
-        { id: "layer_fog", name: "Fog of War", kind: "fog" }
-      ]
-    },
-    actors: {
-      [actorIds.gm]: { id: actorIds.gm, name: "Dungeon Master", role: "gm", kind: "npc" },
-      [actorIds.fighter]: {
-        id: actorIds.fighter,
-        name: "Mira Vale",
-        role: "player",
-        kind: "pc",
-        sheet: {
-          level: 5,
-          className: "Fighter",
-          ancestry: "Human",
-          armorClass: 18,
-          hitPoints: { current: 42, max: 47 },
-          spellSlots: {},
-          inventory: ["Longsword", "Shield", "Potion of Healing"]
-        }
-      },
-      [actorIds.cleric]: {
-        id: actorIds.cleric,
-        name: "Thorn Ashdown",
-        role: "player",
-        kind: "pc",
-        sheet: {
-          level: 5,
-          className: "Cleric",
-          ancestry: "Dwarf",
-          armorClass: 17,
-          hitPoints: { current: 31, max: 36 },
-          spellSlots: { "1": 4, "2": 3, "3": 2 },
-          inventory: ["Mace", "Holy Symbol", "Prayer Book"]
-        }
-      },
-      [actorIds.goblin]: { id: actorIds.goblin, name: "Goblin Skirmisher", role: "agent", kind: "creature" }
-    },
-    tokens,
-    participants: {},
-    transcript: [],
-    memoryFacts: [],
-    worldClock: {
-      tick: 1,
-      phase: "session",
-      currentDay: 12
-    },
-    factions: [
-      { id: "faction_empire", name: "The Ashen Empire", pressure: 58 },
-      { id: "faction_rebels", name: "Lantern Rebels", pressure: 44 }
-    ],
-    fronts: [{ id: "front_siege", name: "Siege at Candlekeep", progress: 2, stakes: "Break the gate before dawn." }],
-    inbox: [],
-    approvals: [],
-    encounter: null,
-    lastRecap: "The party reached the gatehouse and spotted an enemy advance in the rain.",
-    diagnostics: {
-      voice: "healthy",
-      transcript: "degraded",
-      ai: "healthy",
-      memory: "healthy"
-    },
-    processedCommandIds: []
-  };
 }
 
 function rollDie(sides: number, random: () => number): number {
@@ -160,6 +37,10 @@ function upsertApproval(state: SessionRoomState, approval: ApprovalGate): Sessio
     ...state,
     approvals
   };
+}
+
+function findPendingApprovalByLinkedId(state: SessionRoomState, linkedId: string): ApprovalGate | undefined {
+  return state.approvals.find((approval) => approval.linkedId === linkedId && approval.status === "pending");
 }
 
 export function applyLedgerEvent(state: SessionRoomState, event: LedgerEvent): SessionRoomState {
@@ -240,18 +121,20 @@ export function applyLedgerEvent(state: SessionRoomState, event: LedgerEvent): S
       };
     case "canon.change.proposed":
       return upsertApproval(state, event.payload.approval);
+    case "ai.intent.requested":
+      return upsertApproval(state, event.payload.approval);
     case "ai.intent.approved":
       return {
         ...state,
         approvals: state.approvals.map((approval) =>
-          approval.id === event.payload.approvalId ? { ...approval, status: "approved" } : approval
+          approval.id === event.payload.approvalId ? { ...approval, status: "approved", resolvedAt: event.occurredAt } : approval
         )
       };
     case "ai.intent.rejected":
       return {
         ...state,
         approvals: state.approvals.map((approval) =>
-          approval.id === event.payload.approvalId ? { ...approval, status: "rejected" } : approval
+          approval.id === event.payload.approvalId ? { ...approval, status: "rejected", resolvedAt: event.occurredAt } : approval
         )
       };
     case "recap.updated":
@@ -345,14 +228,40 @@ export function applySessionCommand(
       events.push(buildLedgerEvent(state.campaign, "canon.change.proposed", { approval }));
       break;
     }
-    case "ai.intent.approve": {
-      const intent: AIIntent = {
-        id: command.intentId,
-        type: command.intentType,
+    // AI intent commands stay pure here: request/update approval state only.
+    case "ai.intent.request": {
+      if (findPendingApprovalByLinkedId(state, command.intentId)) {
+        break;
+      }
+
+      const approval: ApprovalGate = {
+        id: createEventId("approval"),
+        type: "ai-intent",
         title: command.title,
         detail: command.detail,
+        status: "pending",
+        linkedId: command.intentId,
+        intentType: command.intentType,
+        requestedAt: createTimestamp()
+      };
+
+      events.push(buildLedgerEvent(state.campaign, "ai.intent.requested", { approval }));
+      break;
+    }
+    case "ai.intent.approve": {
+      const approval = state.approvals.find((entry) => entry.id === command.approvalId);
+      if (!approval || approval.type !== "ai-intent" || !approval.intentType) {
+        break;
+      }
+
+      const intent: AIIntent = {
+        id: approval.linkedId,
+        type: approval.intentType,
+        title: approval.title,
+        detail: approval.detail,
         suggestedBy: "copilot"
       };
+
       events.push(buildLedgerEvent(state.campaign, "ai.intent.approved", { approvalId: command.approvalId, intent }));
       break;
     }

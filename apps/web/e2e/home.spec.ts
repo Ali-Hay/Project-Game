@@ -56,3 +56,27 @@ test("companion shell buttons switch views and campaign actions propagate across
     page.locator(".companion-phone").getByText(/The enemy standard dips as the rain lashes harder across the shattered parapet\./i).first()
   ).toBeVisible();
 });
+
+// Regression: ISSUE-001 — stale copilot suggestions could be re-requested after approval
+// Found by /qa on 2026-04-07
+// Report: .gstack/qa-reports/qa-report-project-game-2026-04-07.md
+test("approval-backed copilot intents update the live queue and campaign HQ", async ({ page }) => {
+  await page.goto("/campaigns/campaign_demo");
+
+  await page.getByRole("button", { name: /Refresh copilot/i }).click();
+  await expect(page.getByText(/Advance the front pressure clock/i)).toBeVisible();
+
+  await page.getByRole("button", { name: /Request approval/i }).click();
+  await expect(page.getByRole("heading", { name: /Canon changes waiting on the DM/i })).toBeVisible();
+  await expect(page.getByRole("button", { name: /Request approval/i })).toHaveCount(0);
+
+  await page.getByRole("button", { name: /Approve canon change/i }).first().click();
+  await expect(page.getByText(/No pending approvals/i)).toBeVisible();
+  await expect(page.getByText(/already been queued or resolved/i)).toBeVisible();
+
+  await page.getByRole("link", { name: /Campaign HQ/i }).click();
+  await expect(page).toHaveURL(/\/campaigns\/.+\/hq$/);
+  await expect(page.getByText(/World tick 2/i)).toBeVisible();
+  await expect(page.getByText(/Recently resolved/i)).toBeVisible();
+  await expect(page.getByText(/Applied/i).first()).toBeVisible();
+});

@@ -25,7 +25,18 @@ The original browser prototype remains in the repo as reference material while t
 
 1. Copy `.env.example` to `.env`
 2. Run `corepack prepare pnpm@10.0.0 --activate`
-3. Run `pnpm install`
-4. Run `pnpm dev`
+3. Run `corepack pnpm install`
+4. Run `corepack pnpm dev`
 
 The web app runs at `http://localhost:3000` and the session service runs at `http://localhost:4000`.
+
+For focused local work, use `corepack pnpm dev:session` or `corepack pnpm dev:web`.
+Before opening a PR, run `corepack pnpm verify`.
+
+## Project docs
+
+- `CLAUDE.md` documents the project commands, skill routing, and Render deploy workflow.
+- `DESIGN.md` is the source of truth for UI direction, typography, color, spacing, and motion.
+- `CHANGELOG.md` tracks shipped releases and release notes.
+- `TODOS.md` tracks intentionally deferred follow-up work.
+- `.github/*.md` and `.planning/*.md` preserve prototype and world-building reference notes from earlier planning passes.

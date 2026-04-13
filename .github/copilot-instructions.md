@@ -1,5 +1,7 @@
 # Copilot Instructions for Project Game
 
+> Current repo note: this file documents the original browser prototype. For the current monorepo app, commands, and agent routing, read `README.md` and `CLAUDE.md` before applying these prototype-specific patterns.
+
 ## Project Overview: Chronicle: Zero
 A browser-based AI-native TTRPG engine bridging interactive fiction and tactical gameplay. The core philosophy separates **deterministic rules** from **generative narrative**, eliminating "AI hallucinations" through a dual-model architecture. Dark fantasy setting (chapel/undead horror theme) powered by D&D 5e mechanics, procedural audio, and asynchronous world simulation.
 

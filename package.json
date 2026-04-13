@@ -4,13 +4,15 @@
   "version": "0.1.0",
   "packageManager": "pnpm@10.0.0",
   "scripts": {
-    "dev": "concurrently \"corepack pnpm dev:session\" \"corepack pnpm dev:web\"",
-    "dev:session": "corepack pnpm --filter @project-game/session dev",
-    "dev:web": "corepack pnpm --filter @project-game/web dev",
+    "dev": "concurrently -k -n domain,session,web -c yellow,cyan,magenta \"corepack pnpm dev:domain\" \"node ./scripts/wait-for-domain-dist.mjs && corepack pnpm --filter @project-game/session dev\" \"node ./scripts/wait-for-domain-dist.mjs && corepack pnpm --filter @project-game/web dev\"",
+    "dev:domain": "corepack pnpm --filter @project-game/domain dev",
+    "dev:session": "corepack pnpm --filter @project-game/domain build && corepack pnpm --filter @project-game/session dev",
+    "dev:web": "corepack pnpm --filter @project-game/domain build && corepack pnpm --filter @project-game/web dev",
     "build": "corepack pnpm --filter @project-game/domain build && corepack pnpm --filter @project-game/session build && corepack pnpm --filter @project-game/web build",
     "typecheck": "corepack pnpm --recursive typecheck",
-    "test": "vitest run --config vitest.config.ts",
-    "test:e2e": "playwright test"
+    "test": "corepack pnpm --filter @project-game/domain build && vitest run --config vitest.config.ts",
+    "test:e2e": "playwright test",
+    "verify": "corepack pnpm typecheck && corepack pnpm test && corepack pnpm build"
   },
   "pnpm": {
     "onlyBuiltDependencies": ["esbuild", "sharp"]

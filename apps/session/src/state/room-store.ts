@@ -4,14 +4,15 @@ import {
   assembleContextPack,
   buildLedgerEvent,
   commandSchema,
-  createDemoCampaignState,
   createTranscriptTurn,
+  intentRequiresApproval,
   type CampaignSummary,
   type LedgerEvent,
   type SessionCommand,
   type SessionRoomState,
   type ServiceHealth
 } from "@project-game/domain";
+import { createDemoCampaignState } from "./demo-room";
 
 export class RoomStore {
   private readonly rooms = new Map<string, SessionRoomState>();
@@ -52,25 +53,97 @@ export class RoomStore {
     return room;
   }
 
+  private getPendingApproval(room: SessionRoomState, approvalId: string) {
+    const approval = room.approvals.find((entry) => entry.id === approvalId);
+
+    if (!approval) {
+      throw new Error(`Unknown approval: ${approvalId}`);
+    }
+
+    if (approval.status !== "pending") {
+      throw new Error(`Approval is not pending: ${approvalId}`);
+    }
+
+    return approval;
+  }
+
+  private createWorldTickEvent(room: SessionRoomState) {
+    const nextClock = {
+      ...room.worldClock,
+      tick: room.worldClock.tick + 1,
+      phase: room.worldClock.phase === "session" ? "downtime" : "session",
+      currentDay: room.worldClock.phase === "downtime" ? room.worldClock.currentDay + 1 : room.worldClock.currentDay
+    } as SessionRoomState["worldClock"];
+
+    return buildLedgerEvent(room.campaign, "world.tick.started", {
+      clock: nextClock,
+      worldEvent: {
+        id: `world_${nextClock.tick}`,
+        title: `World tick ${nextClock.tick}`,
+        summary: "Factions continue to reposition while the party regroups before the next scene.",
+        createdAt: new Date().toISOString()
+      }
+    });
+  }
+
+  private executeApprovedIntent(room: SessionRoomState, approvalId: string): LedgerEvent[] {
+    const approval = this.getPendingApproval(room, approvalId);
+
+    if (approval.type !== "ai-intent" || !approval.intentType) {
+      throw new Error(`Approval does not resolve an AI intent: ${approvalId}`);
+    }
+
+    // The reducer only updates approval bookkeeping. Concrete room effects stay here.
+    if (approval.intentType === "world.tick.apply") {
+      return [this.createWorldTickEvent(room)];
+    }
+
+    throw new Error(`Unsupported AI intent: ${approval.intentType}`);
+  }
+
   dispatchCommand(roomId: string, input: unknown): { state: SessionRoomState; events: LedgerEvent[] } {
     const room = this.getRoom(roomId);
     const command = commandSchema.parse(input) as SessionCommand;
+    let executionEvents: LedgerEvent[] = [];
+
+    if (room.processedCommandIds.includes(command.commandId)) {
+      return {
+        state: room,
+        events: []
+      };
+    }
 
     if (command.type === "token.move" && !room.tokens[command.tokenId]) {
       throw new Error(`Unknown token: ${command.tokenId}`);
     }
 
-    const result = applySessionCommand(room, command);
+    if (command.type === "ai.intent.request" && !intentRequiresApproval(command.intentType)) {
+      throw new Error(`AI intent does not require approval: ${command.intentType}`);
+    }
 
-    if (result.events.length > 0) {
-      this.appendEvents(roomId, result.events, result.state);
+    if (command.type === "ai.intent.approve") {
+      executionEvents = this.executeApprovedIntent(room, command.approvalId);
+    }
+
+    if (command.type === "ai.intent.reject") {
+      this.getPendingApproval(room, command.approvalId);
+    }
+
+    const result = applySessionCommand(room, command);
+    const events = [...result.events, ...executionEvents];
+
+    if (events.length > 0) {
+      this.appendEvents(roomId, events, {
+        ...room,
+        processedCommandIds: result.state.processedCommandIds
+      });
     } else {
       this.rooms.set(roomId, result.state);
     }
 
     return {
       state: this.getRoom(roomId),
-      events: result.events
+      events
     };
   }
 
@@ -101,24 +174,7 @@ export class RoomStore {
 
   advanceWorldTick(campaignId: string) {
     const room = this.findRoomByCampaign(campaignId);
-    const nextClock = {
-      ...room.worldClock,
-      tick: room.worldClock.tick + 1,
-      phase: room.worldClock.phase === "session" ? "downtime" : "session",
-      currentDay: room.worldClock.phase === "downtime" ? room.worldClock.currentDay + 1 : room.worldClock.currentDay
-    } as SessionRoomState["worldClock"];
-
-    const worldEvent = {
-      id: `world_${nextClock.tick}`,
-      title: `World tick ${nextClock.tick}`,
-      summary: `Factions continue to reposition while the party regroups before the next scene.`,
-      createdAt: new Date().toISOString()
-    };
-
-    const event = buildLedgerEvent(room.campaign, "world.tick.started", {
-      clock: nextClock,
-      worldEvent
-    });
+    const event = this.createWorldTickEvent(room);
 
     return {
       roomId: room.roomId,

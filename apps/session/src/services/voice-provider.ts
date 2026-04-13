@@ -1,12 +1,6 @@
-import type { SessionConfig } from "../config";
+import type { VoiceDescriptor } from "@project-game/domain";
 
-export interface VoiceDescriptor {
-  provider: string;
-  roomName: string;
-  token: string;
-  status: "ready" | "mock" | "needs-config";
-  note: string;
-}
+import type { SessionConfig } from "../config";
 
 export interface VoiceProviderStatus {
   provider: string;
